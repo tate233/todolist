@@ -1,14 +1,13 @@
-import os
 import json
 from pathlib import Path
-from datetime import datetime
+
 
 class Config:
     def __init__(self):
         self.app_name = "智能笔记管理系统"
         self.version = "1.0.0"
         self.author = "开源项目"
-        
+
         self.data_dir = Path.home() / ".smart_notes"
         self.notes_dir = self.data_dir / "notes"
         self.attachments_dir = self.data_dir / "attachments"
@@ -16,7 +15,7 @@ class Config:
         self.database_file = self.data_dir / "notes.db"
         self.config_file = self.data_dir / "config.json"
         self.index_file = self.data_dir / "search_index.json"
-        
+
         self.window_width = 1200
         self.window_height = 800
         self.theme_color = "#2c3e50"
@@ -24,29 +23,29 @@ class Config:
         self.bg_color = "#ecf0f1"
         self.text_color = "#2c3e50"
         self.sidebar_width = 250
-        
+
         self.editor_font = ("Consolas", 11)
         self.ui_font = ("Microsoft YaHei UI", 10)
         self.title_font = ("Microsoft YaHei UI", 12, "bold")
-        
+
         self.auto_save = True
         self.auto_save_interval = 30
         self.max_recent_notes = 10
         self.enable_markdown_preview = True
         self.enable_syntax_highlight = True
-        
+
         self.default_category = "未分类"
         self.categories = ["工作", "学习", "生活", "项目", "想法"]
-        
+
         self._ensure_directories()
         self._load_config()
-    
+
     def _ensure_directories(self):
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.notes_dir.mkdir(parents=True, exist_ok=True)
         self.attachments_dir.mkdir(parents=True, exist_ok=True)
         self.exports_dir.mkdir(parents=True, exist_ok=True)
-    
+
     def _load_config(self):
         if self.config_file.exists():
             try:
@@ -57,7 +56,7 @@ class Config:
                             setattr(self, key, value)
             except Exception as e:
                 print(f"加载配置失败: {e}")
-    
+
     def save_config(self):
         try:
             config_data = {
@@ -75,21 +74,21 @@ class Config:
         except Exception as e:
             print(f"保存配置失败: {e}")
             return False
-    
+
     def add_category(self, category):
         if category and category not in self.categories:
             self.categories.append(category)
             self.save_config()
             return True
         return False
-    
+
     def remove_category(self, category):
         if category in self.categories and category != self.default_category:
             self.categories.remove(category)
             self.save_config()
             return True
         return False
-    
+
     def get_app_info(self):
         return {
             'name': self.app_name,

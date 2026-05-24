@@ -1,6 +1,6 @@
 # 智能笔记管理系统
 
-[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 一个功能强大的智能笔记管理系统，支持Markdown编辑、全文搜索、知识图谱可视化等高级功能。
@@ -23,7 +23,7 @@
 
 ## 技术栈
 
-- **编程语言**: Python 3.8+
+- **编程语言**: Python 3.12+
 - **GUI框架**: Tkinter
 - **Markdown解析**: markdown, pygments
 - **搜索引擎**: 自实现TF-IDF算法
@@ -32,7 +32,7 @@
 
 ## 系统要求
 
-- Python 3.8 或更高版本
+- Python 3.12 或更高版本
 - Windows 7/10/11、macOS 10.14+、Linux (Ubuntu 18.04+)
 - 至少 100MB 可用磁盘空间
 - 至少 512MB 可用内存
@@ -43,6 +43,7 @@
 
 1. 下载对应平台的可执行文件
 2. 双击运行即可（无需安装Python环境）
+
 
 ### 方法二：从源码运行
 
@@ -179,7 +180,7 @@ project1/
 
 ## 核心功能实现
 
-### 1. 笔记管理 (note_model.py)
+### 1. 笔记管理 (note\_model.py)
 
 - **Note类**: 笔记数据模型，包含标题、内容、分类、标签等属性
 - **NoteManager类**: 笔记管理器，实现CRUD操作
@@ -195,7 +196,7 @@ search_notes()     # 搜索笔记
 get_statistics()   # 获取统计信息
 ```
 
-### 2. Markdown解析 (markdown_parser.py)
+### 2. Markdown解析 (markdown\_parser.py)
 
 - 基于markdown库实现
 - 支持代码高亮（pygments）
@@ -211,7 +212,7 @@ get_word_count()        # 字数统计
 create_toc()            # 生成目录
 ```
 
-### 3. 搜索引擎 (search_engine.py)
+### 3. 搜索引擎 (search\_engine.py)
 
 - **倒排索引**: 高效的全文搜索
 - **TF-IDF算法**: 计算文档相关度
@@ -223,7 +224,7 @@ create_toc()            # 生成目录
 3. 计算TF-IDF分数
 4. 按相关度排序
 
-### 4. 知识图谱 (search_engine.py)
+### 4. 知识图谱 (search\_engine.py)
 
 - **节点**: 每篇笔记是一个节点
 - **边**: 笔记之间的链接关系
