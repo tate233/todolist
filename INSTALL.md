@@ -2,7 +2,7 @@
 
 ## 系统要求
 
-- Python 3.8 或更高版本
+- Python 3.12 或更高版本
 - Windows 7/10/11、macOS 10.14+、Linux (Ubuntu 18.04+)
 - 至少 100MB 可用磁盘空间
 
@@ -12,16 +12,9 @@
 
 ```bash
 pip install -r requirements.txt
-```
-
-或者手动安装：
-
-```bash
-pip install markdown==3.5.1
-pip install pygments==2.17.2
-pip install networkx==3.2.1
-pip install pillow==10.1.0
-pip install matplotlib==3.8.2
+# 或者使用uv来管理依赖的下载与安装
+# 例如 uv pip install -r requirements
+# 或者 uv sync 按照pyproject.toml来同步
 ```
 
 ### 步骤2：运行程序
@@ -65,12 +58,19 @@ A: 确保已安装所有依赖库：
 pip install markdown pygments networkx pillow matplotlib
 ```
 
+Linux环境下，当运行后提示libtcl.so缺失时，可尝试通过安装动态链接库来解决问题。
+以Debian环境为例，采用下列命令安装：
+
+```bash
+sudo apt install tk9.0 tcl9.0 libtcl9.0
+```
+
 ### Q: 打包失败怎么办？
 
 A: 
 1. 确保PyInstaller已安装：`pip install pyinstaller`
 2. 尝试手动打包命令
-3. 检查Python版本是否为3.8+
+3. 检查Python版本是否为3.12+
 
 ### Q: 程序无法启动？
 
