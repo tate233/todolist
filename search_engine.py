@@ -263,17 +263,16 @@ class KnowledgeGraph:
         if note_id not in self.nodes:
             return []
 
+        adjacency = self._build_adjacency()
         connected = set()
         current_level = {note_id}
 
         for _ in range(depth):
             next_level = set()
             for node in current_level:
-                for edge in self.edges:
-                    if edge[0] == node and edge[1] not in connected:
-                        next_level.add(edge[1])
-                    elif edge[1] == node and edge[0] not in connected:
-                        next_level.add(edge[0])
+                for neighbor in adjacency.get(node, ()):
+                    if neighbor not in connected:
+                        next_level.add(neighbor)
 
             connected.update(next_level)
             current_level = next_level
