@@ -76,6 +76,11 @@ class Config:
         self.encryption_enabled = False
         self.keystore_file = self.data_dir / "keystore.json"
 
+        # Task reminders.
+        self.reminder_enabled = True
+        self.reminder_interval = 300   # seconds between scans
+        self.reminder_lead_days = 1    # remind when due within N days
+
         self.window_width = 1200
         self.window_height = 800
         self.theme_color = "#2c3e50"
