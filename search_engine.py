@@ -142,8 +142,10 @@ class SearchEngine:
                     if note_id in notes:
                         scores[note_id] += self.calculate_tf_idf(token, note_id)
 
-        for note_id, note in enumerate(notes):
-            query_lower = query.lower()
+        query_lower = query.lower()
+        for note_id, note in notes.items():
+            if note is None:
+                continue
 
             if query_lower in note.title.lower():
                 scores[note_id] += 10.0
