@@ -159,6 +159,7 @@ class SmartNotesApp:
         menubar.add_cascade(label="视图", menu=view_menu)
         view_menu.add_command(label="预览模式", command=self.toggle_preview)
         view_menu.add_command(label="编辑/分栏/预览切换", command=self.cycle_view_mode)
+        view_menu.add_command(label="笔记任务清单", command=self.show_note_tasks)
         view_menu.add_command(label="历史版本", command=self.show_history)
         view_menu.add_command(label="全屏", accelerator="F11")
 
@@ -177,6 +178,9 @@ class SmartNotesApp:
         help_menu.add_command(label="使用说明", command=self.show_help)
         help_menu.add_command(label="关于", command=self.show_about)
 
+        self._bind_shortcuts()
+
+    def _bind_shortcuts(self):
         self.root.bind('<Control-n>', lambda e: self.create_note())
         self.root.bind('<Control-s>', lambda e: self.save_current_note())
         self.root.bind('<Control-f>', lambda e: self.show_search())
@@ -639,6 +643,35 @@ class SmartNotesApp:
                 pt.insert(tk.END, seg_text, tags)
             pt.insert(tk.END, '\n')
         pt.config(state='disabled')
+
+    def show_note_tasks(self):
+        if not self.current_note:
+            messagebox.showwarning("任务清单", "请先选择一篇笔记")
+            return
+        content = self.editor_text.get('1.0', tk.END)[:-1]
+        tasks = self.markdown_parser.extract_tasks_with_lines(content)
+        if not tasks:
+            messagebox.showinfo("任务清单", "本笔记没有 - [ ] 任务项")
+            return
+
+        win = tk.Toplevel(self.root)
+        win.title("笔记任务清单")
+        win.geometry("420x420")
+
+        def make_toggle(line_index, var):
+            def toggle():
+                text = self.editor_text.get('1.0', tk.END)[:-1]
+                new = self.markdown_parser.set_task_state(text, line_index, var.get())
+                self.editor_text.delete('1.0', tk.END)
+                self.editor_text.insert('1.0', new)
+                self.mark_modified()
+                self.highlight_editor()
+            return toggle
+
+        for line_index, done, label in tasks:
+            var = tk.BooleanVar(value=done)
+            tk.Checkbutton(win, text=label, variable=var, anchor='w',
+                           command=make_toggle(line_index, var)).pack(fill='x', padx=12, pady=2)
 
     def cycle_view_mode(self):
         import view_modes  # noqa: PLC0415
