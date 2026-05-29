@@ -17,17 +17,24 @@ jobs:
         run: python -m pip install --upgrade pip ruff mypy
       - name: Ruff lint
         run: ruff check .
+      - name: Ruff format check
+        run: ruff format --check .
+        continue-on-error: true
       - name: Mypy (progressive, core modules)
         run: mypy config.py markdown_parser.py search_engine.py
         continue-on-error: true
 
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: python -m pip install --upgrade pip markdown pygments networkx pillow pytest
       - name: Run pytest
