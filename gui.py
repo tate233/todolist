@@ -180,6 +180,7 @@ class SmartNotesApp:
         todo_menu.add_command(label="待办列表", command=self.show_todo_view)
         todo_menu.add_command(label="任务仪表盘", command=self.show_dashboard)
         todo_menu.add_command(label="任务看板", command=self.show_kanban)
+        todo_menu.add_command(label="任务日历", command=self.show_calendar)
 
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="帮助", menu=help_menu)
@@ -651,6 +652,56 @@ class SmartNotesApp:
                 pt.insert(tk.END, seg_text, tags)
             pt.insert(tk.END, '\n')
         pt.config(state='disabled')
+
+    def show_calendar(self):
+        from datetime import date  # noqa: PLC0415
+
+        import calendar_view  # noqa: PLC0415
+        win = tk.Toplevel(self.root)
+        win.title("任务日历")
+        win.geometry("640x480")
+        today = date.today()
+        state = {"y": today.year, "m": today.month}
+
+        grid = tk.Frame(win)
+        grid.pack(fill='both', expand=True, padx=8, pady=8)
+
+        def render():
+            for c in grid.winfo_children():
+                c.destroy()
+            y, m = state["y"], state["m"]
+            header = tk.Frame(grid)
+            header.grid(row=0, column=0, columnspan=7, sticky='ew')
+            tk.Button(header, text="◀", command=lambda: shift(-1)).pack(side='left')
+            tk.Label(header, text=f"{y} 年 {m} 月",
+                     font=('Microsoft YaHei UI', 12, 'bold')).pack(side='left', expand=True)
+            tk.Button(header, text="▶", command=lambda: shift(1)).pack(side='right')
+            for ci, name in enumerate(["一", "二", "三", "四", "五", "六", "日"]):
+                tk.Label(grid, text=name, fg=self.colors['text_light']).grid(row=1, column=ci)
+            by_day = calendar_view.tasks_by_day(self.task_manager.get_all_tasks(), y, m)
+            for ri, week in enumerate(calendar_view.month_matrix(y, m), start=2):
+                for ci, day in enumerate(week):
+                    if day == 0:
+                        continue
+                    cell = tk.Frame(grid, bd=1, relief='ridge', width=80, height=56)
+                    cell.grid(row=ri, column=ci, sticky='nsew', padx=1, pady=1)
+                    cell.grid_propagate(False)
+                    is_today = (y, m, day) == (today.year, today.month, today.day)
+                    fg = self.colors['primary'] if is_today else self.colors['text_dark']
+                    tk.Label(cell, text=str(day), fg=fg).pack(anchor='nw')
+                    n = len(by_day.get(day, []))
+                    if n:
+                        tk.Label(cell, text=f"{n} 项", fg=self.colors['warning'],
+                                 cursor='hand2').pack(anchor='nw')
+            for ci in range(7):
+                grid.grid_columnconfigure(ci, weight=1)
+
+        def shift(delta):
+            state["y"], state["m"] = (calendar_view.prev_month(state["y"], state["m"])
+                                      if delta < 0 else calendar_view.next_month(state["y"], state["m"]))
+            render()
+
+        render()
 
     def show_kanban(self):
         win = tk.Toplevel(self.root)
