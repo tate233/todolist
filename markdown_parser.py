@@ -295,6 +295,12 @@ class MarkdownParser:
         text = re.sub(r'\n{3,}', '\n\n', text)
         return text.strip()
 
+    _wikilink_re = re.compile(r'\[\[([^\]|]+?)(?:\|([^\]]+))?\]\]')
+
+    def extract_wikilinks(self, text: str) -> List[str]:
+        """Return the target titles from [[title]] / [[title|alias]] links."""
+        return [m.group(1).strip() for m in self._wikilink_re.finditer(text)]
+
     def make_snippet(self, text: str, query: str, context: int = 40):
         """Return (snippet, hit_spans) around the first match of query.
 
