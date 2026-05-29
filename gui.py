@@ -179,6 +179,8 @@ class SmartNotesApp:
         self.root.bind('<Control-z>', self.editor_undo)
         self.root.bind('<Control-y>', self.editor_redo)
         self.root.bind('<Control-h>', self.show_replace)
+        self.root.bind('<Control-b>', lambda e: self._md_wrap("bold"))
+        self.root.bind('<Control-i>', lambda e: self._md_wrap("italic"))
 
     def create_widgets(self):
         main_container = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
@@ -398,6 +400,8 @@ class SmartNotesApp:
                                         bg=self.colors['bg_card'],
                                         fg=self.colors['text_light'])
         self.word_count_label.pack(side='right', padx=15)
+
+        self._create_md_toolbar()
 
         status_bar = tk.Frame(self.editor_container, bg=self.colors['bg_card'])
         status_bar.pack(fill='x', side='bottom')
@@ -965,6 +969,65 @@ class SmartNotesApp:
 
     def show_search(self):
         self.search_entry.focus()
+
+    def _create_md_toolbar(self):
+        bar = tk.Frame(self.editor_container, bg=self.colors['bg_card'])
+        bar.pack(fill='x', padx=20)
+        buttons = [
+            ("B", lambda: self._md_wrap("bold")),
+            ("I", lambda: self._md_wrap("italic")),
+            ("</>", lambda: self._md_wrap("inline_code")),
+            ("H1", lambda: self._md_line("h1")),
+            ("H2", lambda: self._md_line("h2")),
+            ("•", lambda: self._md_line("ul")),
+            ("1.", lambda: self._md_line("ol")),
+            ("❝", lambda: self._md_line("quote")),
+            ("—", lambda: self._md_snippet("\n---\n")),
+            ("🔗", lambda: self._md_snippet("[text](url)")),
+        ]
+        for label, cmd in buttons:
+            tk.Button(bar, text=label, command=cmd, bd=0,
+                      bg=self.colors['hover'], fg=self.colors['text_dark'],
+                      padx=8, pady=2, cursor='hand2').pack(side='left', padx=2, pady=4)
+
+    def _editor_offset(self, index):
+        # convert a Tk text index to a flat character offset
+        return len(self.editor_text.get('1.0', index))
+
+    def _apply_md_result(self, new_text, caret_offset):
+        self.editor_text.delete('1.0', tk.END)
+        self.editor_text.insert('1.0', new_text.rstrip('\n'))
+        self.editor_text.mark_set(tk.INSERT, f'1.0 + {caret_offset} chars')
+        self.editor_text.focus_set()
+        self.mark_modified()
+        self.update_word_count()
+        self.highlight_editor()
+
+    def _md_wrap(self, kind, event=None):
+        import md_actions  # noqa: PLC0415
+        text = self.editor_text.get('1.0', tk.END)[:-1]
+        try:
+            start = self._editor_offset(tk.SEL_FIRST)
+            end = self._editor_offset(tk.SEL_LAST)
+        except tk.TclError:
+            start = end = self._editor_offset(tk.INSERT)
+        new, caret = md_actions.apply_wrap(text, start, end, kind)
+        self._apply_md_result(new, caret)
+        return "break"
+
+    def _md_line(self, kind):
+        import md_actions  # noqa: PLC0415
+        text = self.editor_text.get('1.0', tk.END)[:-1]
+        start = self._editor_offset(tk.INSERT)
+        new, caret = md_actions.apply_line_prefix(text, start, kind)
+        self._apply_md_result(new, caret)
+
+    def _md_snippet(self, snippet):
+        import md_actions  # noqa: PLC0415
+        text = self.editor_text.get('1.0', tk.END)[:-1]
+        pos = self._editor_offset(tk.INSERT)
+        new, caret = md_actions.insert_snippet(text, pos, snippet)
+        self._apply_md_result(new, caret)
 
     def editor_undo(self, event=None):
         try:
