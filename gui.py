@@ -157,13 +157,7 @@ class SmartNotesApp:
         edit_menu.add_command(label="查找", command=self.show_search, accelerator="Ctrl+F")
         edit_menu.add_command(label="替换", command=self.show_replace, accelerator="Ctrl+H")
 
-        view_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="视图", menu=view_menu)
-        view_menu.add_command(label="预览模式", command=self.toggle_preview)
-        view_menu.add_command(label="编辑/分栏/预览切换", command=self.cycle_view_mode)
-        view_menu.add_command(label="笔记任务清单", command=self.show_note_tasks)
-        view_menu.add_command(label="历史版本", command=self.show_history)
-        view_menu.add_command(label="全屏", accelerator="F11")
+        self._build_view_menu(menubar)
 
         tools_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="工具", menu=tools_menu)
@@ -188,6 +182,16 @@ class SmartNotesApp:
         help_menu.add_command(label="关于", command=self.show_about)
 
         self._bind_shortcuts()
+
+    def _build_view_menu(self, menubar):
+        view_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="视图", menu=view_menu)
+        view_menu.add_command(label="预览模式", command=self.toggle_preview)
+        view_menu.add_command(label="编辑/分栏/预览切换", command=self.cycle_view_mode)
+        view_menu.add_command(label="笔记任务清单", command=self.show_note_tasks)
+        view_menu.add_command(label="反向链接", command=self.show_backlinks)
+        view_menu.add_command(label="历史版本", command=self.show_history)
+        view_menu.add_command(label="全屏", accelerator="F11")
 
     def _bind_shortcuts(self):
         self.root.bind('<Control-n>', lambda e: self.create_note())
@@ -568,6 +572,8 @@ class SmartNotesApp:
 
         # Incremental, deferred-flush update instead of a full remove+add+rewrite.
         self.search_engine.update_document(self.current_note.id, self.current_note)
+        # Resolve [[wikilinks]] to real note links on save.
+        self.note_manager.sync_wikilinks(self.current_note.id)
 
         self.is_modified = False
         self.load_notes_list()
@@ -877,6 +883,29 @@ class SmartNotesApp:
 
         tk.Button(d, text="保存", command=save).grid(row=4, column=0, columnspan=2, pady=10)
         title_e.focus()
+
+    def show_backlinks(self):
+        if not self.current_note:
+            messagebox.showwarning("反向链接", "请先选择一篇笔记")
+            return
+        backlinks = self.note_manager.get_backlinks(self.current_note.id)
+        win = tk.Toplevel(self.root)
+        win.title(f"反向链接 - {self.current_note.title}")
+        win.geometry("360x320")
+        if not backlinks:
+            tk.Label(win, text="没有其它笔记链接到本笔记").pack(padx=12, pady=12)
+            return
+        listbox = tk.Listbox(win)
+        for n in backlinks:
+            listbox.insert(tk.END, n.title)
+        listbox.pack(fill='both', expand=True, padx=8, pady=8)
+        ids = [n.id for n in backlinks]
+
+        def open_sel(_e=None):
+            sel = listbox.curselection()
+            if sel:
+                self.load_note(ids[sel[0]])
+        listbox.bind('<Double-Button-1>', open_sel)
 
     def show_note_tasks(self):
         if not self.current_note:
