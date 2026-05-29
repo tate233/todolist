@@ -136,11 +136,11 @@ class SmartNotesApp:
 
         edit_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="编辑", menu=edit_menu)
-        edit_menu.add_command(label="撤销", accelerator="Ctrl+Z")
-        edit_menu.add_command(label="重做", accelerator="Ctrl+Y")
+        edit_menu.add_command(label="撤销", command=self.editor_undo, accelerator="Ctrl+Z")
+        edit_menu.add_command(label="重做", command=self.editor_redo, accelerator="Ctrl+Y")
         edit_menu.add_separator()
         edit_menu.add_command(label="查找", command=self.show_search, accelerator="Ctrl+F")
-        edit_menu.add_command(label="替换", accelerator="Ctrl+H")
+        edit_menu.add_command(label="替换", command=self.show_replace, accelerator="Ctrl+H")
 
         view_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="视图", menu=view_menu)
@@ -161,6 +161,9 @@ class SmartNotesApp:
         self.root.bind('<Control-n>', lambda e: self.create_note())
         self.root.bind('<Control-s>', lambda e: self.save_current_note())
         self.root.bind('<Control-f>', lambda e: self.show_search())
+        self.root.bind('<Control-z>', self.editor_undo)
+        self.root.bind('<Control-y>', self.editor_redo)
+        self.root.bind('<Control-h>', self.show_replace)
 
     def create_widgets(self):
         main_container = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
@@ -664,6 +667,50 @@ class SmartNotesApp:
 
     def show_search(self):
         self.search_entry.focus()
+
+    def editor_undo(self, event=None):
+        try:
+            self.editor_text.edit_undo()
+        except tk.TclError:
+            pass  # nothing to undo
+        return "break"
+
+    def editor_redo(self, event=None):
+        try:
+            self.editor_text.edit_redo()
+        except tk.TclError:
+            pass  # nothing to redo
+        return "break"
+
+    def show_replace(self, event=None):
+        dialog = tk.Toplevel(self.root)
+        dialog.title("查找和替换")
+        dialog.transient(self.root)
+        dialog.configure(bg=self.colors['bg_card'])
+
+        tk.Label(dialog, text="查找:", bg=self.colors['bg_card']).grid(row=0, column=0, padx=8, pady=8, sticky='e')
+        find_entry = tk.Entry(dialog, width=28)
+        find_entry.grid(row=0, column=1, padx=8, pady=8)
+        tk.Label(dialog, text="替换为:", bg=self.colors['bg_card']).grid(row=1, column=0, padx=8, pady=8, sticky='e')
+        repl_entry = tk.Entry(dialog, width=28)
+        repl_entry.grid(row=1, column=1, padx=8, pady=8)
+
+        def replace_all():
+            find = find_entry.get()
+            if not find:
+                return
+            repl = repl_entry.get()
+            content = self.editor_text.get(1.0, tk.END)
+            new_content, n = content.replace(find, repl), content.count(find)
+            if n:
+                self.editor_text.delete(1.0, tk.END)
+                self.editor_text.insert(1.0, new_content.rstrip('\n'))
+                self.mark_modified()
+                self.update_word_count()
+            messagebox.showinfo("替换", f"已替换 {n} 处", parent=dialog)
+
+        tk.Button(dialog, text="全部替换", command=replace_all).grid(row=2, column=0, columnspan=2, pady=10)
+        find_entry.focus()
 
     def show_help(self):
         help_text = """
