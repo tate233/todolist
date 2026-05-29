@@ -105,6 +105,32 @@ class MarkdownParser:
             tasks.append((is_completed, task_text))
         return tasks
 
+    _task_line_re = re.compile(r'^(\s*[-*]\s+\[)([ xX])(\]\s+.+)$')
+
+    def extract_tasks_with_lines(self, text: str) -> List[Tuple[int, bool, str]]:
+        """Return (line_index, is_completed, task_text) for each task line.
+
+        line_index is 0-based into text.split('\n'), enabling precise write-back
+        even when task texts repeat.
+        """
+        result = []
+        for i, line in enumerate(text.split('\n')):
+            m = self._task_line_re.match(line)
+            if m:
+                result.append((i, m.group(2).lower() == 'x', m.group(3)[2:].strip()))
+        return result
+
+    def set_task_state(self, text: str, line_index: int, completed: bool) -> str:
+        """Set the checkbox state of the task on the given line; return new text."""
+        lines = text.split('\n')
+        if not (0 <= line_index < len(lines)):
+            return text
+        m = self._task_line_re.match(lines[line_index])
+        if m:
+            mark = 'x' if completed else ' '
+            lines[line_index] = f"{m.group(1)}{mark}{m.group(3)}"
+        return '\n'.join(lines)
+
     def get_word_count(self, text: str) -> int:
         return count_words(text)
 
