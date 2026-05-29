@@ -62,6 +62,10 @@ class Config:
         # Storage backend: "json" (default, gradual rollout) or "sqlite".
         self.storage_backend = "json"
 
+        # BM25 ranking parameters.
+        self.bm25_k1 = 1.5
+        self.bm25_b = 0.75
+
         self.window_width = 1200
         self.window_height = 800
         self.theme_color = "#2c3e50"
