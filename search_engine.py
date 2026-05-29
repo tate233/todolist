@@ -144,6 +144,9 @@ class SearchEngine:
 
         query_lower = query.lower()
         for note_id, note in notes.items():
+            if note is None:
+                continue
+
             if query_lower in note.title.lower():
                 scores[note_id] += 10.0
 
