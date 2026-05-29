@@ -28,3 +28,8 @@ def test_results_keys_are_strings(tmp_path):
     results = se.search("planning", nm.notes)
     assert results
     assert all(isinstance(nid, str) for nid, _ in results)
+
+
+def test_unknown_query_returns_empty(tmp_path):
+    nm, se, _a, _b = _setup(tmp_path)
+    assert se.search("zzzznomatchxyz", nm.notes) == []
