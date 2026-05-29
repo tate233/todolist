@@ -236,6 +236,22 @@ class SearchEngine:
                 scores[note_id] *= weights["tags"]
         return sorted(scores.items(), key=lambda x: x[1], reverse=True)[:limit]
 
+    def search_fuzzy(self, query: str, notes: Dict, limit: int = 20) -> List[Tuple[str, float]]:
+        """Augment exact results with pinyin and edit-distance fallbacks at
+        lower weight, improving recall for Chinese and typos."""
+        import pinyin_index  # noqa: PLC0415
+        results = dict(self.search_bm25(query, notes, limit))
+        q = query.lower()
+        for note_id, note in notes.items():
+            if note is None or note_id in results:
+                continue
+            hay = f"{note.title} {note.content} {' '.join(note.tags)}"
+            if pinyin_index.matches_pinyin(q, hay):
+                results[note_id] = results.get(note_id, 0.0) + 2.0   # pinyin < exact
+            elif any(pinyin_index.fuzzy_match(q, tok) for tok in self.tokenize(hay)):
+                results[note_id] = results.get(note_id, 0.0) + 1.0   # fuzzy lowest
+        return sorted(results.items(), key=lambda x: x[1], reverse=True)[:limit]
+
     def search(self, query: str, notes: Dict, limit: int = 20) -> List[Tuple[str, float]]:
         if not query or not notes:
             return []
