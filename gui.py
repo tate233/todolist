@@ -180,6 +180,7 @@ class SmartNotesApp:
         view_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label=self._t("menu.view"), menu=view_menu)
         view_menu.add_command(label="发现面板", command=self.show_discovery)
+        view_menu.add_command(label="专注模式", command=self.toggle_focus_mode, accelerator="F9")
         view_menu.add_command(label="预览模式", command=self.toggle_preview)
         view_menu.add_command(label="编辑/分栏/预览切换", command=self.cycle_view_mode)
         view_menu.add_command(label="笔记任务清单", command=self.show_note_tasks)
@@ -196,10 +197,12 @@ class SmartNotesApp:
         self.root.bind('<Control-h>', self.show_replace)
         self.root.bind('<Control-b>', lambda e: self._md_wrap("bold"))
         self.root.bind('<Control-i>', lambda e: self._md_wrap("italic"))
+        self.root.bind('<F9>', lambda e: self.toggle_focus_mode())
 
     def create_widgets(self):
         main_container = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
         main_container.pack(fill='both', expand=True)
+        self._main_container = main_container
 
         self.create_sidebar(main_container)
         self.create_editor_area(main_container)
@@ -1138,6 +1141,28 @@ class SmartNotesApp:
         content = self.editor_text.get(1.0, tk.END)
         word_count = self.markdown_parser.get_word_count(content)
         self.word_count_label.config(text=f"📝 字数: {word_count}")
+        # richer live stats in the status bar
+        self._set_status(self.markdown_parser.format_stats_line(content))
+
+    def toggle_focus_mode(self):
+        """Hide/show the sidebar for distraction-free writing."""
+        self._focus_mode = not getattr(self, '_focus_mode', False)
+        try:
+            if self._focus_mode:
+                self.sidebar_frame.pack_forget()
+                self._main_container.forget(self.sidebar_frame)
+            else:
+                self._main_container.insert(0, self.sidebar_frame, weight=0)
+        except (tk.TclError, AttributeError):
+            # PanedWindow layout differences; fall back to grid/pack toggle
+            try:
+                if self._focus_mode:
+                    self.sidebar_frame.pack_forget()
+                else:
+                    self.sidebar_frame.pack(side='left', fill='y')
+            except tk.TclError:
+                pass
+        self._set_status("专注模式: " + ("开" if self._focus_mode else "关"))
 
     def show_note_context_menu(self, event):
         menu = tk.Menu(self.root, tearoff=0)
