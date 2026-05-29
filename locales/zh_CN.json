@@ -1,0 +1,22 @@
+{
+    "menu.file": "文件",
+    "menu.edit": "编辑",
+    "menu.view": "视图",
+    "menu.tools": "工具",
+    "menu.todo": "待办",
+    "menu.help": "帮助",
+    "action.new_note": "新建笔记",
+    "action.save_note": "保存笔记",
+    "action.import_note": "导入笔记",
+    "action.export_note": "导出笔记",
+    "action.delete": "删除",
+    "action.search": "查找",
+    "action.replace": "替换",
+    "action.settings": "设置",
+    "action.preview": "预览模式",
+    "todo.list": "待办列表",
+    "todo.dashboard": "任务仪表盘",
+    "todo.kanban": "任务看板",
+    "todo.calendar": "任务日历",
+    "status.saved": "已保存"
+}
