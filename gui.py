@@ -18,23 +18,8 @@ class SmartNotesApp:
         self.root.title(f"✨ {config.app_name} v{config.version}")
         self.root.geometry(f"{config.window_width}x{config.window_height}")
 
-        self.colors = {
-            'primary': '#667eea',
-            'primary_dark': '#5568d3',
-            'secondary': '#764ba2',
-            'accent': '#f093fb',
-            'bg_main': '#f7fafc',
-            'bg_sidebar': '#2d3748',
-            'bg_card': '#ffffff',
-            'text_dark': '#2d3748',
-            'text_light': '#718096',
-            'text_white': '#ffffff',
-            'border': '#e2e8f0',
-            'success': '#48bb78',
-            'warning': '#ed8936',
-            'danger': '#f56565',
-            'hover': '#edf2f7'
-        }
+        import theme  # noqa: PLC0415
+        self.colors = theme.get_theme(getattr(config, 'theme', theme.DEFAULT_THEME))
 
         self.root.configure(bg=self.colors['bg_main'])
 
@@ -1281,12 +1266,19 @@ class SmartNotesApp:
         tk.Checkbutton(dialog, text="启用语法高亮", variable=highlight_var,
                        bg=self.colors['bg_card']).grid(row=4, column=0, columnspan=2, sticky='w', **pad)
 
+        import theme  # noqa: PLC0415
+        tk.Label(dialog, text="主题:", bg=self.colors['bg_card']).grid(row=5, column=0, sticky='e', **pad)
+        theme_var = tk.StringVar(value=getattr(config, 'theme', theme.DEFAULT_THEME))
+        ttk.Combobox(dialog, textvariable=theme_var, values=theme.available_themes(),
+                     state='readonly', width=12).grid(row=5, column=1, sticky='w', **pad)
+
         def apply_settings():
             config.auto_save = auto_save_var.get()
             config.silent_auto_save = silent_var.get()
             config.auto_save_interval = max(5, int(interval_var.get()))
             config.enable_markdown_preview = preview_var.get()
             config.enable_syntax_highlight = highlight_var.get()
+            config.theme = theme_var.get()
             config.save_config()
             # restart the auto-save timer so interval/toggle take effect now
             if self.auto_save_job:
@@ -1295,9 +1287,9 @@ class SmartNotesApp:
             if config.auto_save:
                 self.start_auto_save()
             dialog.destroy()
-            self._set_status("设置已保存")
+            self._set_status("设置已保存（主题将在重启后完全生效）")
 
-        tk.Button(dialog, text="保存", command=apply_settings).grid(row=5, column=0, columnspan=2, pady=12)
+        tk.Button(dialog, text="保存", command=apply_settings).grid(row=6, column=0, columnspan=2, pady=12)
 
     def show_trash(self):
         trash = self.note_manager.get_trash()
