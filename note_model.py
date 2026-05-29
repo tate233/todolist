@@ -1,3 +1,4 @@
+import logging
 import json
 import uuid
 from datetime import datetime
@@ -5,6 +6,9 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from markdown_parser import count_words
+
+
+logger = logging.getLogger(__name__)
 
 
 class Note:
@@ -96,7 +100,7 @@ class NoteManager:
                         for note_id, note_data in data.items()
                     }
             except Exception as e:
-                print(f"加载笔记失败: {e}")
+                logger.exception("加载笔记失败: %s", e)
                 self.notes = {}
         else:
             self.notes = {}
@@ -108,7 +112,7 @@ class NoteManager:
                 json.dump(data, f, indent=4, ensure_ascii=False)
             return True
         except Exception as e:
-            print(f"保存笔记失败: {e}")
+            logger.exception("保存笔记失败: %s", e)
             return False
 
     def create_note(self, title: str, content: str = "", category: str = "未分类",
@@ -258,7 +262,7 @@ class NoteManager:
 
             return True
         except Exception as e:
-            print(f"导出笔记失败: {e}")
+            logger.exception("导出笔记失败: %s", e)
             return False
 
     def import_note(self, filepath: Path, category: str = "未分类") -> Optional[Note]:
@@ -270,7 +274,7 @@ class NoteManager:
             note = self.create_note(title, content, category)
             return note
         except Exception as e:
-            print(f"导入笔记失败: {e}")
+            logger.exception("导入笔记失败: %s", e)
             return None
 
     def _save_note_file(self, note: Note):
@@ -281,7 +285,7 @@ class NoteManager:
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(note.content)
         except Exception as e:
-            print(f"保存笔记文件失败: {e}")
+            logger.exception("保存笔记文件失败: %s", e)
 
     def _delete_note_file(self, note: Note):
         try:
@@ -290,7 +294,7 @@ class NoteManager:
             if filepath.exists():
                 filepath.unlink()
         except Exception as e:
-            print(f"删除笔记文件失败: {e}")
+            logger.exception("删除笔记文件失败: %s", e)
 
     def _remove_links_to_note(self, note_id: str):
         for note in self.notes.values():

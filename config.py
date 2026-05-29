@@ -1,6 +1,10 @@
+import logging
 import json
 import re
 from pathlib import Path
+
+
+logger = logging.getLogger(__name__)
 
 
 def _detect_version() -> str:
@@ -88,7 +92,7 @@ class Config:
                         if hasattr(self, key) and key not in ['data_dir', 'notes_dir']:
                             setattr(self, key, value)
             except Exception as e:
-                print(f"加载配置失败: {e}")
+                logger.exception("加载配置失败: %s", e)
 
     def save_config(self):
         try:
@@ -105,7 +109,7 @@ class Config:
                 json.dump(config_data, f, indent=4, ensure_ascii=False)
             return True
         except Exception as e:
-            print(f"保存配置失败: {e}")
+            logger.exception("保存配置失败: %s", e)
             return False
 
     def add_category(self, category):
