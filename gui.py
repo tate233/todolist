@@ -510,7 +510,19 @@ class SmartNotesApp:
 
         self.update_word_count()
         self.highlight_editor()
+        self._highlight_query_in_editor()
         self.is_modified = False
+
+    def _highlight_query_in_editor(self):
+        query = getattr(self, '_last_query', None)
+        self.editor_text.tag_configure('search_hit', background='#ffe066')
+        self.editor_text.tag_remove('search_hit', '1.0', tk.END)
+        if not query:
+            return
+        import md_actions  # noqa: PLC0415
+        content = self.editor_text.get('1.0', tk.END)[:-1]
+        for start, end in md_actions.find_all_matches(content, query):
+            self.editor_text.tag_add('search_hit', f'1.0 + {start} chars', f'1.0 + {end} chars')
 
     def create_note(self):
         if self.is_modified and self.current_note:
@@ -597,16 +609,27 @@ class SmartNotesApp:
             self.load_notes_list()
             return
 
-        results = self.search_engine.search(query, self.note_manager.notes)
+        self._last_query = query
+        results = self.search_engine.search_fuzzy(query, self.note_manager.notes)
 
         if results:
             note_ids = [note_id for note_id, score in results]
             notes = [self.note_manager.get_note(nid) for nid in note_ids]
             notes = [n for n in notes if n]
             self.load_notes_list(notes)
+            # show a context snippet for the top hit in the status bar
+            top = notes[0]
+            snippet, _spans = self.markdown_parser.make_snippet(top.content, query)
+            if snippet:
+                self._set_status(f"🔍 {top.title}: {snippet}")
         else:
             self.notes_listbox.delete(0, tk.END)
             self.notes_listbox.insert(tk.END, "未找到匹配的笔记")
+            import pinyin_index  # noqa: PLC0415
+            terms = [n.title for n in self.note_manager.get_all_notes()]
+            sugg = pinyin_index.suggest(query, terms)
+            if sugg:
+                self._set_status("提示，您是否要找: " + ", ".join(sugg))
 
     def filter_by_category(self):
         category = self.category_var.get()
