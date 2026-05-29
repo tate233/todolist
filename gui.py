@@ -738,10 +738,12 @@ class SmartNotesApp:
         dialog.transient(self.root)
         dialog.configure(bg=self.colors['bg_card'])
 
-        tk.Label(dialog, text="查找:", bg=self.colors['bg_card']).grid(row=0, column=0, padx=8, pady=8, sticky='e')
+        find_lbl = tk.Label(dialog, text="查找:", bg=self.colors['bg_card'])
+        find_lbl.grid(row=0, column=0, padx=8, pady=8, sticky='e')
         find_entry = tk.Entry(dialog, width=28)
         find_entry.grid(row=0, column=1, padx=8, pady=8)
-        tk.Label(dialog, text="替换为:", bg=self.colors['bg_card']).grid(row=1, column=0, padx=8, pady=8, sticky='e')
+        repl_lbl = tk.Label(dialog, text="替换为:", bg=self.colors['bg_card'])
+        repl_lbl.grid(row=1, column=0, padx=8, pady=8, sticky='e')
         repl_entry = tk.Entry(dialog, width=28)
         repl_entry.grid(row=1, column=1, padx=8, pady=8)
 
