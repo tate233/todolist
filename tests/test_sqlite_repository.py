@@ -24,7 +24,7 @@ def test_crud_roundtrip(tmp_path):
     assert got is not None
     assert got.title == "标题" and got.tags == ["a", "b"] and got.links == ["x"]
 
-    nm2.delete_note(n.id)
+    nm2.purge_note(n.id)  # permanent removal
     assert SqliteRepository(tmp_path / "db.sqlite3", Note).list_ids() == []
 
 
