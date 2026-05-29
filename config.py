@@ -81,6 +81,9 @@ class Config:
         self.reminder_interval = 300   # seconds between scans
         self.reminder_lead_days = 1    # remind when due within N days
 
+        # Plugins directory (each *.py exposes register(context)).
+        self.plugins_dir = self.data_dir / "plugins"
+
         self.window_width = 1200
         self.window_height = 800
         self.theme_color = "#2c3e50"

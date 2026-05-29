@@ -1,0 +1,1 @@
+"""Plugin system for SmartNotes."""

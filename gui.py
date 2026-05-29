@@ -44,11 +44,16 @@ class SmartNotesApp:
         self.auto_save_job = None
         self.is_modified = False
 
+        from commands import CommandRegistry  # noqa: PLC0415
+        self.commands = CommandRegistry()
+
         self.setup_styles()
         self.create_menu()
         self.create_widgets()
         self.load_notes_list()
         self.rebuild_search_index()
+        self._register_core_commands()
+        self._load_plugins()
 
         if config.auto_save:
             self.start_auto_save()
@@ -188,6 +193,65 @@ class SmartNotesApp:
         view_menu.add_command(label="历史版本", command=self.show_history)
         view_menu.add_command(label="全屏", accelerator="F11")
 
+    def _register_core_commands(self):
+        actions = [
+            ("core.new_note", "新建笔记", self.create_note, "Ctrl+N"),
+            ("core.save_note", "保存笔记", self.save_current_note, "Ctrl+S"),
+            ("core.search", "搜索", self.show_search, "Ctrl+F"),
+            ("core.preview", "切换预览", self.toggle_preview, ""),
+            ("core.todo", "待办列表", self.show_todo_view, ""),
+            ("core.dashboard", "任务仪表盘", self.show_dashboard, ""),
+            ("core.settings", "设置", self.show_settings, ""),
+            ("core.rebuild_index", "重建索引", self.rebuild_search_index, ""),
+        ]
+        for cid, title, handler, shortcut in actions:
+            try:
+                self.commands.register(cid, title, handler, shortcut)
+            except ValueError:  # noqa: PERF203 - idempotent registration guard
+                pass  # already registered
+
+    def _load_plugins(self):
+        from plugins import loader  # noqa: PLC0415
+        context = {"registry": self.commands, "app": self}
+        loaded = loader.load_all(config.plugins_dir, context)
+        if loaded:
+            self._set_status(f"已加载插件: {', '.join(loaded)}")
+
+    def show_command_palette(self, event=None):
+        win = tk.Toplevel(self.root)
+        win.title("命令面板")
+        win.geometry("440x320")
+        entry = tk.Entry(win, font=('Microsoft YaHei UI', 12))
+        entry.pack(fill='x', padx=8, pady=8)
+        listbox = tk.Listbox(win)
+        listbox.pack(fill='both', expand=True, padx=8, pady=(0, 8))
+
+        state = {"cmds": []}
+
+        def refresh(*_):
+            listbox.delete(0, tk.END)
+            state["cmds"] = self.commands.search(entry.get())
+            for cmd in state["cmds"]:
+                sc = f"  ({cmd.shortcut})" if cmd.shortcut else ""
+                listbox.insert(tk.END, cmd.title + sc)
+            if state["cmds"]:
+                listbox.selection_set(0)
+
+        def run(_e=None):
+            sel = listbox.curselection()
+            idx = sel[0] if sel else 0
+            if state["cmds"]:
+                cmd = state["cmds"][idx]
+                win.destroy()
+                self.commands.execute(cmd.id)
+
+        entry.bind('<KeyRelease>', refresh)
+        entry.bind('<Return>', run)
+        listbox.bind('<Double-Button-1>', run)
+        refresh()
+        entry.focus()
+        return "break"
+
     def _bind_shortcuts(self):
         self.root.bind('<Control-n>', lambda e: self.create_note())
         self.root.bind('<Control-s>', lambda e: self.save_current_note())
@@ -198,6 +262,8 @@ class SmartNotesApp:
         self.root.bind('<Control-b>', lambda e: self._md_wrap("bold"))
         self.root.bind('<Control-i>', lambda e: self._md_wrap("italic"))
         self.root.bind('<F9>', lambda e: self.toggle_focus_mode())
+        self.root.bind('<Control-Shift-P>', self.show_command_palette)
+        self.root.bind('<Control-Shift-p>', self.show_command_palette)
 
     def create_widgets(self):
         main_container = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
