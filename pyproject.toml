@@ -21,6 +21,9 @@ preview = ["tkhtmlview>=0.2"]
 graph = ["matplotlib>=3.5"]
 # Optional master-password content encryption.
 crypto = ["cryptography>=42"]
+# Optional cloud sync backends.
+sync-webdav = ["requests>=2.25"]
+sync-s3 = ["boto3>=1.26"]
 
 [dependency-groups]
 dev = [
