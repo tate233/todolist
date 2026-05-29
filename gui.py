@@ -39,6 +39,8 @@ class SmartNotesApp:
         self.markdown_parser = MarkdownParser()
         self.search_engine = SearchEngine(config.index_file)
         self.knowledge_graph = KnowledgeGraph()
+        from history import VersionHistory  # noqa: PLC0415
+        self.history = VersionHistory(config.history_file)
 
         self.current_note = None
         self.auto_save_job = None
@@ -150,6 +152,7 @@ class SmartNotesApp:
         view_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="视图", menu=view_menu)
         view_menu.add_command(label="预览模式", command=self.toggle_preview)
+        view_menu.add_command(label="历史版本", command=self.show_history)
         view_menu.add_command(label="全屏", accelerator="F11")
 
         tools_menu = tk.Menu(menubar, tearoff=0)
@@ -512,6 +515,10 @@ class SmartNotesApp:
         tags = [tag.strip() for tag in tags_text.split(',') if tag.strip()]
         is_favorite = self.favorite_var.get()
 
+        # Archive the pre-save snapshot for version history.
+        self.history.record(self.current_note.id, self.current_note.title,
+                            self.current_note.content)
+
         self.note_manager.update_note(
             self.current_note.id,
             title=title,
@@ -629,6 +636,50 @@ class SmartNotesApp:
             self.editor_text.pack_forget()
             self.preview_text.pack(fill='both', expand=True)
             self._render_markdown_preview(content)
+
+    def show_history(self):
+        if not self.current_note:
+            messagebox.showwarning("历史版本", "请先选择一篇笔记")
+            return
+        versions = self.history.get_versions(self.current_note.id)
+        if not versions:
+            messagebox.showinfo("历史版本", "暂无历史版本")
+            return
+
+        win = tk.Toplevel(self.root)
+        win.title(f"历���版本 - {self.current_note.title}")
+        win.geometry("700x500")
+
+        listbox = tk.Listbox(win, height=8)
+        for v in versions:
+            listbox.insert(tk.END, f"{v['timestamp']}  ({len(v['content'])} 字符)")
+        listbox.pack(fill='x', padx=8, pady=8)
+
+        diff_text = scrolledtext.ScrolledText(win, font=('Consolas', 10))
+        diff_text.pack(fill='both', expand=True, padx=8, pady=(0, 8))
+
+        def show_diff(_event=None):
+            sel = listbox.curselection()
+            if not sel:
+                return
+            current = self.editor_text.get(1.0, tk.END).strip()
+            diff = self.history.diff(self.current_note.id, sel[0], current)
+            diff_text.delete(1.0, tk.END)
+            diff_text.insert(1.0, diff or "（与当前内容无差异）")
+
+        def rollback():
+            sel = listbox.curselection()
+            if not sel:
+                return
+            snap = self.history.rollback(self.current_note.id, sel[0])
+            self.editor_text.delete(1.0, tk.END)
+            self.editor_text.insert(1.0, snap['content'])
+            self.mark_modified()
+            self.update_word_count()
+            win.destroy()
+
+        listbox.bind('<<ListboxSelect>>', show_diff)
+        tk.Button(win, text="回滚到该版本", command=rollback).pack(pady=(0, 8))
 
     def on_text_change(self, event):
         self.mark_modified()
