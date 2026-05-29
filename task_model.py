@@ -175,6 +175,20 @@ class TaskManager:
                 out.append(t)
         return out
 
+    def dashboard_data(self, within_days: int = 7, today=None) -> Dict[str, List[Task]]:
+        """Grouped view for the dashboard: overdue / due-today / upcoming.
+
+        'upcoming' excludes items already counted as due-today.
+        """
+        due_today = self.get_due_today(today)
+        today_ids = {t.id for t in due_today}
+        upcoming = [t for t in self.get_upcoming(within_days, today) if t.id not in today_ids]
+        return {
+            "overdue": self.get_overdue(today),
+            "today": due_today,
+            "upcoming": upcoming,
+        }
+
     def delete_task(self, task_id: str) -> bool:
         if task_id in self.tasks:
             del self.tasks[task_id]
