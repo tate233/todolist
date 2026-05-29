@@ -10,6 +10,27 @@ from markdown_parser import count_words
 logger = logging.getLogger(__name__)
 
 
+def _default_repository(storage_path: Path, notes_dir: Path):
+    """Pick the storage backend from config / SMARTNOTES_BACKEND env var.
+
+    Defaults to the JSON file backend; "sqlite" selects SqliteRepository.
+    """
+    import os  # noqa: PLC0415
+    backend = os.environ.get("SMARTNOTES_BACKEND")
+    if backend is None:
+        try:
+            from config import config  # noqa: PLC0415
+            backend = getattr(config, "storage_backend", "json")
+        except Exception:
+            backend = "json"
+    if backend == "sqlite":
+        from storage.sqlite_repository import SqliteRepository  # noqa: PLC0415
+        db = Path(storage_path).with_suffix(".sqlite3")
+        return SqliteRepository(db, Note)
+    from storage.json_repository import JsonFileRepository  # noqa: PLC0415
+    return JsonFileRepository(storage_path, notes_dir, Note)
+
+
 class Note:
     def __init__(self, title: str, content: str = "", category: str = "未分类",
                  tags: List[str] = None, note_id: str = None, created_at: str = None,
@@ -89,8 +110,7 @@ class NoteManager:
         # Persistence is delegated to a NoteRepository; default keeps the
         # existing JSON-file + per-note .md behaviour.
         if repository is None:
-            from storage.json_repository import JsonFileRepository  # noqa: PLC0415
-            repository = JsonFileRepository(storage_path, notes_dir, Note)
+            repository = _default_repository(storage_path, notes_dir)
         self.repository = repository
         self.notes: Dict[str, Note] = {}
         self.load_notes()
