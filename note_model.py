@@ -4,6 +4,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from markdown_parser import count_words
+
 
 class Note:
     def __init__(self, title: str, content: str = "", category: str = "未分类",
@@ -17,7 +19,7 @@ class Note:
         self.created_at = created_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.updated_at = updated_at or self.created_at
         self.is_favorite = is_favorite
-        self.word_count = len(content)
+        self.word_count = count_words(content)
         self.links = []
 
     def to_dict(self) -> Dict:
@@ -55,7 +57,7 @@ class Note:
                 setattr(self, key, value)
         self.updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if 'content' in kwargs:
-            self.word_count = len(kwargs['content'])
+            self.word_count = count_words(kwargs['content'])
 
     def add_tag(self, tag: str):
         if tag and tag not in self.tags:
