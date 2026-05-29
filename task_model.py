@@ -204,3 +204,23 @@ class TaskManager:
 
     def get_by_due_date(self, due_date: str) -> List[Task]:
         return [t for t in self.tasks.values() if t.due_date == due_date]
+
+    # Columns shown on the kanban board, in flow order.
+    KANBAN_ORDER = (STATUS_TODO, STATUS_IN_PROGRESS, STATUS_DONE)
+
+    def kanban_columns(self) -> "Dict[str, List[Task]]":
+        cols = {s: [] for s in self.KANBAN_ORDER}
+        for t in self.tasks.values():
+            if t.status in cols:
+                cols[t.status].append(t)
+        return cols
+
+    def move_status(self, task_id: str, direction: int) -> bool:
+        """Move a task to the adjacent kanban column (+1 forward, -1 back)."""
+        task = self.get_task(task_id)
+        if not task or task.status not in self.KANBAN_ORDER:
+            return False
+        i = self.KANBAN_ORDER.index(task.status) + direction
+        if not (0 <= i < len(self.KANBAN_ORDER)):
+            return False
+        return self.update_task(task_id, status=self.KANBAN_ORDER[i])
