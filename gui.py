@@ -179,6 +179,7 @@ class SmartNotesApp:
     def _build_view_menu(self, menubar):
         view_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label=self._t("menu.view"), menu=view_menu)
+        view_menu.add_command(label="发现面板", command=self.show_discovery)
         view_menu.add_command(label="预览模式", command=self.toggle_preview)
         view_menu.add_command(label="编辑/分栏/预览切换", command=self.cycle_view_mode)
         view_menu.add_command(label="笔记任务清单", command=self.show_note_tasks)
@@ -878,6 +879,56 @@ class SmartNotesApp:
 
         tk.Button(d, text="保存", command=save).grid(row=4, column=0, columnspan=2, pady=10)
         title_e.focus()
+
+    def show_discovery(self):  # noqa: PLR0915 - cohesive panel builder
+        win = tk.Toplevel(self.root)
+        win.title("发现面板")
+        win.geometry("380x560")
+
+        def section(text):
+            tk.Label(win, text=text, font=('Microsoft YaHei UI', 11, 'bold')).pack(
+                anchor='w', padx=10, pady=(10, 2))
+
+        # Related notes (for the current note)
+        section("相关笔记")
+        if self.current_note:
+            related = self.search_engine.get_related_notes(self.current_note.id, self.note_manager.notes)
+            if related:
+                for nid, _score in related:
+                    note = self.note_manager.get_note(nid)
+                    if note:
+                        tk.Button(win, text=f"• {note.title}", anchor='w', bd=0,
+                                  command=lambda i=nid: self.load_note(i)).pack(fill='x', padx=20)
+            else:
+                tk.Label(win, text="  无", fg=self.colors['text_light']).pack(anchor='w', padx=20)
+        else:
+            tk.Label(win, text="  （未选择笔记）", fg=self.colors['text_light']).pack(anchor='w', padx=20)
+
+        # Tag cloud
+        section("标签云")
+        cloud = tk.Frame(win)
+        cloud.pack(fill='x', padx=16)
+        for tag, count, size in self.note_manager.tag_cloud():
+            tk.Button(cloud, text=f"{tag}({count})", bd=0,
+                      font=('Microsoft YaHei UI', 8 + size * 2),
+                      command=lambda tg=tag: self._filter_by_tag(tg)).pack(side='left', padx=3, pady=2)
+
+        # Isolated notes
+        section("孤立笔记")
+        self.knowledge_graph.build_graph(self.note_manager.notes)
+        isolated = self.knowledge_graph.get_isolated_notes()
+        if isolated:
+            for nid in isolated:
+                note = self.note_manager.get_note(nid)
+                if note:
+                    tk.Button(win, text=f"• {note.title}", anchor='w', bd=0,
+                              command=lambda i=nid: self.load_note(i)).pack(fill='x', padx=20)
+        else:
+            tk.Label(win, text="  无", fg=self.colors['text_light']).pack(anchor='w', padx=20)
+
+    def _filter_by_tag(self, tag):
+        notes = self.note_manager.get_notes_by_tag(tag)
+        self.load_notes_list(notes)
 
     def show_backlinks(self):
         if not self.current_note:
