@@ -488,6 +488,7 @@ class SmartNotesApp:
         self.favorite_var.set(note.is_favorite)
 
         self.update_word_count()
+        self.highlight_editor()
         self.is_modified = False
 
     def create_note(self):
@@ -685,9 +686,40 @@ class SmartNotesApp:
         listbox.bind('<<ListboxSelect>>', show_diff)
         tk.Button(win, text="回滚到该版本", command=rollback).pack(pady=(0, 8))
 
+    def _configure_editor_highlight_tags(self):
+        e = self.editor_text
+        e.tag_configure('md_heading', foreground='#5568d3', font=('Consolas', 11, 'bold'))
+        e.tag_configure('md_quote', foreground='#718096')
+        e.tag_configure('md_list', foreground='#48bb78')
+        e.tag_configure('md_bold', font=('Consolas', 11, 'bold'))
+        e.tag_configure('md_italic', font=('Consolas', 11, 'italic'))
+        e.tag_configure('md_code', background='#f1f1f4')
+        e.tag_configure('md_link', foreground='#3498db', underline=True)
+        self._md_tags = ['md_heading', 'md_quote', 'md_list', 'md_bold',
+                         'md_italic', 'md_code', 'md_link']
+
+    def highlight_editor(self):
+        if not getattr(config, 'enable_syntax_highlight', True):
+            return
+        if not hasattr(self, '_md_tags'):
+            self._configure_editor_highlight_tags()
+        e = self.editor_text
+        for tag in self._md_tags:
+            e.tag_remove(tag, '1.0', tk.END)
+        content = e.get('1.0', tk.END)
+        for lineno, line in enumerate(content.split('\n'), start=1):
+            for tag, start, end in self.markdown_parser.highlight_spans(line):
+                e.tag_add(tag, f'{lineno}.{start}', f'{lineno}.{end}')
+
+    def _schedule_highlight(self):
+        if getattr(self, '_hl_job', None):
+            self.root.after_cancel(self._hl_job)
+        self._hl_job = self.root.after(250, self.highlight_editor)
+
     def on_text_change(self, event):
         self.mark_modified()
         self.update_word_count()
+        self._schedule_highlight()
 
     def mark_modified(self):
         self.is_modified = True
