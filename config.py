@@ -51,8 +51,12 @@ class Config:
         self.attachments_dir = self.data_dir / "attachments"
         self.exports_dir = self.data_dir / "exports"
         self.database_file = self.data_dir / "notes.db"
+        self.sqlite_file = self.data_dir / "notes.sqlite3"
         self.config_file = self.data_dir / "config.json"
         self.index_file = self.data_dir / "search_index.json"
+
+        # Storage backend: "json" (default, gradual rollout) or "sqlite".
+        self.storage_backend = "json"
 
         self.window_width = 1200
         self.window_height = 800
