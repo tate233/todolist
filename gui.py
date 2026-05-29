@@ -178,6 +178,7 @@ class SmartNotesApp:
         todo_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="待办", menu=todo_menu)
         todo_menu.add_command(label="待办列表", command=self.show_todo_view)
+        todo_menu.add_command(label="任务仪表盘", command=self.show_dashboard)
 
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="帮助", menu=help_menu)
@@ -649,6 +650,27 @@ class SmartNotesApp:
                 pt.insert(tk.END, seg_text, tags)
             pt.insert(tk.END, '\n')
         pt.config(state='disabled')
+
+    def show_dashboard(self):
+        data = self.task_manager.dashboard_data()
+        win = tk.Toplevel(self.root)
+        win.title("任务仪表盘")
+        win.geometry("520x460")
+
+        sections = [
+            ("⚠ 逾期", data["overdue"], self.colors['danger']),
+            ("📅 今日到期", data["today"], self.colors['warning']),
+            ("🔜 即将到期", data["upcoming"], self.colors['primary']),
+        ]
+        for title, tasks, color in sections:
+            header = tk.Label(win, text=f"{title} ({len(tasks)})", anchor='w',
+                              font=('Microsoft YaHei UI', 11, 'bold'), fg=color)
+            header.pack(fill='x', padx=12, pady=(10, 2))
+            if not tasks:
+                tk.Label(win, text="  无", anchor='w', fg=self.colors['text_light']).pack(fill='x', padx=20)
+            for t in tasks:
+                due = f"  ·  {t.due_date}" if t.due_date else ""
+                tk.Label(win, text=f"  • {t.title}{due}", anchor='w').pack(fill='x', padx=20)
 
     def show_todo_view(self):  # noqa: PLR0915 - cohesive view builder
         from task_model import STATUS_DONE, STATUS_TODO  # noqa: PLC0415
