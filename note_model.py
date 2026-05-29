@@ -34,7 +34,7 @@ def _default_repository(storage_path: Path, notes_dir: Path):
 class Note:
     def __init__(self, title: str, content: str = "", category: str = "未分类",
                  tags: List[str] = None, note_id: str = None, created_at: str = None,
-                 updated_at: str = None, is_favorite: bool = False):
+                 updated_at: str = None, is_favorite: bool = False, deleted_at: str = None):
         self.id = note_id or str(uuid.uuid4())
         self.title = title
         self.content = content
@@ -43,6 +43,7 @@ class Note:
         self.created_at = created_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.updated_at = updated_at or self.created_at
         self.is_favorite = is_favorite
+        self.deleted_at = deleted_at      # None = active; timestamp = in trash
         self.word_count = count_words(content)
         self.links = []
 
@@ -56,6 +57,7 @@ class Note:
             'created_at': self.created_at,
             'updated_at': self.updated_at,
             'is_favorite': self.is_favorite,
+            'deleted_at': self.deleted_at,
             'word_count': self.word_count,
             'links': self.links
         }
@@ -70,7 +72,8 @@ class Note:
             note_id=data.get('id'),
             created_at=data.get('created_at'),
             updated_at=data.get('updated_at'),
-            is_favorite=data.get('is_favorite', False)
+            is_favorite=data.get('is_favorite', False),
+            deleted_at=data.get('deleted_at'),
         )
         note.links = data.get('links', [])
         return note
@@ -170,7 +173,25 @@ class NoteManager:
         return False
 
     def delete_note(self, note_id: str) -> bool:
+        """Soft-delete: move the note to the trash (excluded from active lists)."""
         note = self.get_note(note_id)
+        if note and note.deleted_at is None:
+            note.deleted_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.save_notes()
+            return True
+        return False
+
+    def restore_note(self, note_id: str) -> bool:
+        note = self.notes.get(note_id)
+        if note and note.deleted_at is not None:
+            note.deleted_at = None
+            self.save_notes()
+            return True
+        return False
+
+    def purge_note(self, note_id: str) -> bool:
+        """Permanently remove a note and its backing file."""
+        note = self.notes.get(note_id)
         if note:
             self._delete_note_file(note)
             del self.notes[note_id]
@@ -179,17 +200,39 @@ class NoteManager:
             return True
         return False
 
+    def get_trash(self) -> List[Note]:
+        return [n for n in self.notes.values() if n.deleted_at is not None]
+
+    def empty_trash(self, older_than_days: int = None) -> int:
+        """Permanently delete trashed notes; optionally only those older than N days."""
+        from datetime import timedelta  # noqa: PLC0415
+        cutoff = None
+        if older_than_days is not None:
+            cutoff = datetime.now() - timedelta(days=older_than_days)
+        removed = 0
+        for note in self.get_trash():
+            if cutoff is not None:
+                try:
+                    deleted_dt = datetime.strptime(note.deleted_at, "%Y-%m-%d %H:%M:%S")
+                except (ValueError, TypeError):
+                    deleted_dt = None
+                if deleted_dt and deleted_dt > cutoff:
+                    continue
+            if self.purge_note(note.id):
+                removed += 1
+        return removed
+
     def get_all_notes(self) -> List[Note]:
-        return list(self.notes.values())
+        return [n for n in self.notes.values() if n.deleted_at is None]
 
     def get_notes_by_category(self, category: str) -> List[Note]:
-        return [note for note in self.notes.values() if note.category == category]
+        return [n for n in self.get_all_notes() if n.category == category]
 
     def get_notes_by_tag(self, tag: str) -> List[Note]:
-        return [note for note in self.notes.values() if tag in note.tags]
+        return [n for n in self.get_all_notes() if tag in n.tags]
 
     def get_favorite_notes(self) -> List[Note]:
-        return [note for note in self.notes.values() if note.is_favorite]
+        return [n for n in self.get_all_notes() if n.is_favorite]
 
     def search_notes(self, keyword: str) -> List[Note]:
         if not keyword:
@@ -198,7 +241,7 @@ class NoteManager:
         keyword = keyword.lower()
         results = []
 
-        for note in self.notes.values():
+        for note in self.get_all_notes():
             if not (keyword in note.title.lower() or
                 keyword in note.content.lower() or
                 any(keyword in tag.lower() for tag in note.tags)):
@@ -225,20 +268,21 @@ class NoteManager:
 
     def get_all_tags(self) -> List[str]:
         tags = set()
-        for note in self.notes.values():
+        for note in self.get_all_notes():
             tags.update(note.tags)
         return sorted(list(tags))
 
     def get_statistics(self) -> Dict:
-        total_notes = len(self.notes)
-        total_words = sum(note.word_count for note in self.notes.values())
+        active = self.get_all_notes()
+        total_notes = len(active)
+        total_words = sum(note.word_count for note in active)
 
         category_counts = {}
-        for note in self.notes.values():
+        for note in active:
             category_counts[note.category] = category_counts.get(note.category, 0) + 1
 
         tag_counts = {}
-        for note in self.notes.values():
+        for note in active:
             for tag in note.tags:
                 tag_counts[tag] = tag_counts.get(tag, 0) + 1
 
