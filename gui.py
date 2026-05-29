@@ -133,6 +133,10 @@ class SmartNotesApp:
         file_menu.add_command(label="导入笔记", command=self.import_note)
         file_menu.add_command(label="导出笔记", command=self.export_note)
         file_menu.add_separator()
+        file_menu.add_command(label="立即备份", command=self.backup_now)
+        file_menu.add_command(label="导出全部为 zip", command=self.export_all_zip)
+        file_menu.add_command(label="从 zip 恢复", command=self.restore_from_zip)
+        file_menu.add_separator()
         file_menu.add_command(label="退出", command=self.on_closing)
 
         edit_menu = tk.Menu(menubar, tearoff=0)
@@ -683,6 +687,45 @@ class SmartNotesApp:
                 messagebox.showinfo("成功", "笔记导出成功")
             else:
                 messagebox.showerror("错误", "笔记导出失败")
+
+    def backup_now(self):
+        import backup  # noqa: PLC0415
+        try:
+            self.search_engine.flush()
+            self.note_manager.save_notes()
+            dest = backup.create_backup(config.data_dir, config.backups_dir)
+            messagebox.showinfo("备份", f"已创建备份:\n{dest.name}")
+        except Exception as e:
+            messagebox.showerror("备份失败", str(e))
+
+    def export_all_zip(self):
+        import backup  # noqa: PLC0415
+        filepath = filedialog.asksaveasfilename(
+            title="导出全部为 zip", defaultextension=".zip",
+            filetypes=[("Zip 归档", "*.zip")])
+        if not filepath:
+            return
+        try:
+            self.search_engine.flush()
+            self.note_manager.save_notes()
+            backup.export_archive(config.data_dir, Path(filepath))
+            messagebox.showinfo("导出", "全部数据已导出")
+        except Exception as e:
+            messagebox.showerror("导出失败", str(e))
+
+    def restore_from_zip(self):
+        import backup  # noqa: PLC0415
+        filepath = filedialog.askopenfilename(
+            title="从 zip 恢复", filetypes=[("Zip 归档", "*.zip")])
+        if not filepath:
+            return
+        if not messagebox.askyesno("恢复", "恢复会覆盖当前数据，确定继续？"):
+            return
+        try:
+            backup.restore_archive(Path(filepath), config.data_dir, overwrite=True)
+            messagebox.showinfo("恢复", "恢复完成，请重启应用以加载数据")
+        except Exception as e:
+            messagebox.showerror("恢复失败", str(e))
 
     def show_statistics(self):
         stats = self.note_manager.get_statistics()
