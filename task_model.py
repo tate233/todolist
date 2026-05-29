@@ -34,8 +34,9 @@ class Task:
                  task_id: str = None, created_at: str = None, completed_at: str = None,
                  tags: List[str] = None, note_id: str = None,
                  recurrence: str = None, subtasks: List[dict] = None,
-                 depends_on: List[str] = None):
+                 depends_on: List[str] = None, pomodoros: int = 0):
         self.id = task_id or str(uuid.uuid4())
+        self.pomodoros = pomodoros
         self.title = title
         self.description = description
         self.due_date = due_date            # 'YYYY-MM-DD' or None
@@ -56,7 +57,7 @@ class Task:
             'created_at': self.created_at, 'completed_at': self.completed_at,
             'tags': self.tags, 'note_id': self.note_id,
             'recurrence': self.recurrence, 'subtasks': self.subtasks,
-            'depends_on': self.depends_on,
+            'depends_on': self.depends_on, 'pomodoros': self.pomodoros,
         }
 
     @classmethod
@@ -68,7 +69,7 @@ class Task:
             created_at=data.get('created_at'), completed_at=data.get('completed_at'),
             tags=data.get('tags', []), note_id=data.get('note_id'),
             recurrence=data.get('recurrence'), subtasks=data.get('subtasks', []),
-            depends_on=data.get('depends_on', []),
+            depends_on=data.get('depends_on', []), pomodoros=data.get('pomodoros', 0),
         )
 
     def subtask_progress(self):
@@ -266,6 +267,35 @@ class TaskManager:
 
     def get_by_due_date(self, due_date: str) -> List[Task]:
         return [t for t in self.tasks.values() if t.due_date == due_date]
+
+    def get_task_statistics(self, today=None) -> Dict:
+        """Aggregate task metrics: totals, status/priority distribution,
+        completion rate and overdue rate."""
+        tasks = list(self.tasks.values())
+        total = len(tasks)
+        by_status: Dict[str, int] = {}
+        by_priority: Dict[str, int] = {}
+        for t in tasks:
+            by_status[t.status] = by_status.get(t.status, 0) + 1
+            by_priority[t.priority] = by_priority.get(t.priority, 0) + 1
+        done = by_status.get(STATUS_DONE, 0)
+        overdue = len(self.get_overdue(today))
+        return {
+            'total': total,
+            'by_status': by_status,
+            'by_priority': by_priority,
+            'completion_rate': (done / total) if total else 0.0,
+            'overdue_rate': (overdue / total) if total else 0.0,
+        }
+
+    def add_pomodoro(self, task_id: str) -> bool:
+        """Increment the completed-pomodoro count of a task."""
+        task = self.get_task(task_id)
+        if not task:
+            return False
+        task.pomodoros = getattr(task, 'pomodoros', 0) + 1
+        self.save()
+        return True
 
     # Columns shown on the kanban board, in flow order.
     KANBAN_ORDER = (STATUS_TODO, STATUS_IN_PROGRESS, STATUS_DONE)
