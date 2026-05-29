@@ -41,6 +41,8 @@ class SmartNotesApp:
         self.knowledge_graph = KnowledgeGraph()
         from history import VersionHistory  # noqa: PLC0415
         self.history = VersionHistory(config.history_file)
+        from attachments import AttachmentManager  # noqa: PLC0415
+        self.attachments = AttachmentManager(config.attachments_dir, config.attachments_index)
 
         self.current_note = None
         self.auto_save_job = None
@@ -135,6 +137,7 @@ class SmartNotesApp:
         file_menu.add_command(label="导入笔记", command=self.import_note)
         file_menu.add_command(label="导出笔记", command=self.export_note)
         file_menu.add_separator()
+        file_menu.add_command(label="插入附件", command=self.insert_attachment)
         file_menu.add_command(label="立即备份", command=self.backup_now)
         file_menu.add_command(label="导出全部为 zip", command=self.export_all_zip)
         file_menu.add_command(label="从 zip 恢复", command=self.restore_from_zip)
@@ -739,6 +742,26 @@ class SmartNotesApp:
                 messagebox.showinfo("成功", "笔记导出成功")
             else:
                 messagebox.showerror("错误", "笔记导出失败")
+
+    def insert_attachment(self):
+        if not self.current_note:
+            messagebox.showwarning("插入附件", "请先选择一篇笔记")
+            return
+        filepath = filedialog.askopenfilename(
+            title="选择要插入的文件",
+            filetypes=[("图片", "*.png *.jpg *.jpeg *.gif"), ("所有文件", "*.*")])
+        if not filepath:
+            return
+        try:
+            name = self.attachments.add_file(Path(filepath), self.current_note.id)
+            rel = f"attachments/{name}"
+            ext = Path(name).suffix.lower()
+            snippet = f"![{Path(filepath).stem}]({rel})" if ext in (".png", ".jpg", ".jpeg", ".gif") \
+                else f"[{Path(filepath).name}]({rel})"
+            self.editor_text.insert(tk.INSERT, snippet)
+            self.mark_modified()
+        except Exception as e:
+            messagebox.showerror("插入附件失败", str(e))
 
     def backup_now(self):
         import backup  # noqa: PLC0415
