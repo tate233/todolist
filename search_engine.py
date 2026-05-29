@@ -6,6 +6,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+from storage.atomic_io import atomic_write_json
+
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +55,7 @@ class SearchEngine:
                 'doc_ids': sorted(self.doc_ids),
                 'total_docs': self.total_docs
             }
-            with open(self.index_file, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
+            atomic_write_json(self.index_file, data)
             return True
         except Exception as e:
             logger.exception("保存索引失败: %s", e)
