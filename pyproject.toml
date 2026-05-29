@@ -19,6 +19,8 @@ dependencies = [
 preview = ["tkhtmlview>=0.2"]
 # Interactive knowledge-graph visualization; falls back to a text summary.
 graph = ["matplotlib>=3.5"]
+# Optional master-password content encryption.
+crypto = ["cryptography>=42"]
 
 [dependency-groups]
 dev = [
