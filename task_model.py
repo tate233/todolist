@@ -32,7 +32,9 @@ class Task:
     def __init__(self, title: str, description: str = "", due_date: str = None,
                  priority: str = PRIORITY_MEDIUM, status: str = STATUS_TODO,
                  task_id: str = None, created_at: str = None, completed_at: str = None,
-                 tags: List[str] = None, note_id: str = None):
+                 tags: List[str] = None, note_id: str = None,
+                 recurrence: str = None, subtasks: List[dict] = None,
+                 depends_on: List[str] = None):
         self.id = task_id or str(uuid.uuid4())
         self.title = title
         self.description = description
@@ -43,6 +45,9 @@ class Task:
         self.completed_at = completed_at
         self.tags = tags or []
         self.note_id = note_id
+        self.recurrence = recurrence        # None | 'daily' | 'weekly' | 'monthly'
+        self.subtasks = subtasks or []      # [{'title': str, 'done': bool}, ...]
+        self.depends_on = depends_on or []  # prerequisite task ids
 
     def to_dict(self) -> Dict:
         return {
@@ -50,6 +55,8 @@ class Task:
             'due_date': self.due_date, 'priority': self.priority, 'status': self.status,
             'created_at': self.created_at, 'completed_at': self.completed_at,
             'tags': self.tags, 'note_id': self.note_id,
+            'recurrence': self.recurrence, 'subtasks': self.subtasks,
+            'depends_on': self.depends_on,
         }
 
     @classmethod
@@ -60,7 +67,31 @@ class Task:
             status=data.get('status', STATUS_TODO), task_id=data.get('id'),
             created_at=data.get('created_at'), completed_at=data.get('completed_at'),
             tags=data.get('tags', []), note_id=data.get('note_id'),
+            recurrence=data.get('recurrence'), subtasks=data.get('subtasks', []),
+            depends_on=data.get('depends_on', []),
         )
+
+    def subtask_progress(self):
+        """Return (completed, total) subtask counts."""
+        total = len(self.subtasks)
+        done = sum(1 for s in self.subtasks if s.get('done'))
+        return done, total
+
+    def next_occurrence_due(self):
+        """Compute the next due date for a recurring task (or None)."""
+        if not self.recurrence:
+            return None
+        from datetime import timedelta  # noqa: PLC0415
+        base = self._due() or date.today()
+        step = {'daily': timedelta(days=1), 'weekly': timedelta(weeks=1)}.get(self.recurrence)
+        if step is not None:
+            return (base + step).isoformat()
+        if self.recurrence == 'monthly':
+            month = base.month % 12 + 1
+            year = base.year + (1 if base.month == 12 else 0)
+            day = min(base.day, 28)
+            return date(year, month, day).isoformat()
+        return None
 
     def mark_done(self):
         self.status = STATUS_DONE
@@ -153,6 +184,8 @@ class TaskManager:
         new_status = kwargs.get("status")
         if new_status is not None and not can_transition(task.status, new_status):
             raise ValueError(f"非法状态流转: {task.status} -> {new_status}")
+        if new_status == STATUS_DONE and not self.dependencies_satisfied(task_id):
+            raise ValueError("前置任务尚未完成，无法标记完成")
         for key, value in kwargs.items():
             if hasattr(task, key):
                 setattr(task, key, value)
@@ -160,6 +193,35 @@ class TaskManager:
             task.completed_at = datetime.now().strftime(_TS)
         self.save()
         return True
+
+    def dependencies_satisfied(self, task_id: str) -> bool:
+        """True if all prerequisite tasks of task_id are done (or missing)."""
+        task = self.get_task(task_id)
+        if not task:
+            return True
+        for dep_id in task.depends_on:
+            dep = self.get_task(dep_id)
+            if dep is not None and dep.status != STATUS_DONE:
+                return False
+        return True
+
+    def complete_task(self, task_id: str):
+        """Mark a task done; if recurring, spawn the next instance and return it."""
+        task = self.get_task(task_id)
+        if not task:
+            return None
+        self.update_task(task_id, status=STATUS_DONE)
+        if task.recurrence:
+            nxt = self.create_task(
+                task.title, description=task.description,
+                due_date=task.next_occurrence_due(), priority=task.priority,
+                tags=list(task.tags), note_id=task.note_id,
+                recurrence=task.recurrence,
+                subtasks=[{'title': s['title'], 'done': False} for s in task.subtasks],
+                depends_on=list(task.depends_on),
+            )
+            return nxt
+        return None
 
     def get_overdue(self, today=None) -> List[Task]:
         return [t for t in self.tasks.values() if t.is_overdue(today)]
