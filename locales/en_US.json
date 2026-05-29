@@ -1,0 +1,22 @@
+{
+    "menu.file": "File",
+    "menu.edit": "Edit",
+    "menu.view": "View",
+    "menu.tools": "Tools",
+    "menu.todo": "Todo",
+    "menu.help": "Help",
+    "action.new_note": "New Note",
+    "action.save_note": "Save Note",
+    "action.import_note": "Import Note",
+    "action.export_note": "Export Note",
+    "action.delete": "Delete",
+    "action.search": "Find",
+    "action.replace": "Replace",
+    "action.settings": "Settings",
+    "action.preview": "Preview",
+    "todo.list": "Todo List",
+    "todo.dashboard": "Dashboard",
+    "todo.kanban": "Kanban",
+    "todo.calendar": "Calendar",
+    "status.saved": "Saved"
+}
