@@ -50,6 +50,7 @@ class Config:
         self.notes_dir = self.data_dir / "notes"
         self.attachments_dir = self.data_dir / "attachments"
         self.exports_dir = self.data_dir / "exports"
+        self.backups_dir = self.data_dir / "backups"
         self.database_file = self.data_dir / "notes.db"
         self.sqlite_file = self.data_dir / "notes.sqlite3"
         self.tasks_db = self.data_dir / "tasks.db"
