@@ -179,6 +179,7 @@ class SmartNotesApp:
         menubar.add_cascade(label="待办", menu=todo_menu)
         todo_menu.add_command(label="待办列表", command=self.show_todo_view)
         todo_menu.add_command(label="任务仪表盘", command=self.show_dashboard)
+        todo_menu.add_command(label="任务看板", command=self.show_kanban)
 
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="帮助", menu=help_menu)
@@ -650,6 +651,42 @@ class SmartNotesApp:
                 pt.insert(tk.END, seg_text, tags)
             pt.insert(tk.END, '\n')
         pt.config(state='disabled')
+
+    def show_kanban(self):
+        win = tk.Toplevel(self.root)
+        win.title("任务看板")
+        win.geometry("760x500")
+        labels = {"todo": "待办", "in_progress": "进行中", "done": "已完成"}
+
+        def render():
+            for child in win.winfo_children():
+                child.destroy()
+            cols = self.task_manager.kanban_columns()
+            for ci, (status, tasks) in enumerate(cols.items()):
+                frame = tk.Frame(win, bd=1, relief='groove')
+                frame.grid(row=0, column=ci, sticky='nsew', padx=4, pady=4)
+                win.grid_columnconfigure(ci, weight=1)
+                tk.Label(frame, text=f"{labels.get(status, status)} ({len(tasks)})",
+                         font=('Microsoft YaHei UI', 11, 'bold')).pack(pady=4)
+                for t in tasks:
+                    card = tk.Frame(frame, bd=1, relief='ridge')
+                    card.pack(fill='x', padx=4, pady=3)
+                    tk.Label(card, text=t.title, anchor='w',
+                             wraplength=200).pack(fill='x', padx=4)
+                    sub = f"{t.priority}" + (f" · {t.due_date}" if t.due_date else "")
+                    tk.Label(card, text=sub, anchor='w',
+                             fg=self.colors['text_light']).pack(fill='x', padx=4)
+                    btns = tk.Frame(card)
+                    btns.pack(fill='x')
+                    tk.Button(btns, text="◀", width=2,
+                              command=lambda tid=t.id: (self.task_manager.move_status(tid, -1), render())
+                              ).pack(side='left')
+                    tk.Button(btns, text="▶", width=2,
+                              command=lambda tid=t.id: (self.task_manager.move_status(tid, 1), render())
+                              ).pack(side='left')
+            win.grid_rowconfigure(0, weight=1)
+
+        render()
 
     def show_dashboard(self):
         data = self.task_manager.dashboard_data()
