@@ -266,6 +266,34 @@ class NoteManager:
     def get_backlinks(self, note_id: str) -> List[Note]:
         return [note for note in self.notes.values() if note_id in note.links]
 
+    def resolve_title(self, title: str) -> Optional[str]:
+        """Return the id of the (first) note with this title, or None."""
+        t = title.strip().lower()
+        for note in self.notes.values():
+            if note.title.lower() == t:
+                return note.id
+        return None
+
+    def sync_wikilinks(self, note_id: str) -> List[str]:
+        """Parse [[title]] wikilinks in a note's content and set note.links to
+        the resolved target ids (de-duplicated, excluding self). Returns the
+        list of unresolved titles."""
+        from markdown_parser import MarkdownParser  # noqa: PLC0415
+        note = self.get_note(note_id)
+        if not note:
+            return []
+        parser = MarkdownParser()
+        resolved, unresolved = [], []
+        for title in parser.extract_wikilinks(note.content):
+            target = self.resolve_title(title)
+            if target and target != note_id and target not in resolved:
+                resolved.append(target)
+            elif not target:
+                unresolved.append(title)
+        note.links = resolved
+        self.save_notes()
+        return unresolved
+
     def get_all_tags(self) -> List[str]:
         tags = set()
         for note in self.get_all_notes():
