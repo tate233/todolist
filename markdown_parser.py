@@ -1,4 +1,5 @@
 # Last modified at 2026/05/24 星期日 15:04:02
+import logging
 import re
 from typing import Dict, List, Tuple
 
@@ -7,6 +8,9 @@ from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.util import ClassNotFound
+
+
+logger = logging.getLogger(__name__)
 
 
 def count_words(text: str) -> int:
@@ -46,7 +50,7 @@ class MarkdownParser:
             self.md.reset()
             return html
         except Exception as e:
-            print(f"Markdown解析失败: {e}")
+            logger.exception("Markdown解析失败: %s", e)
             return f"<pre>{text}</pre>"
 
     def extract_headings(self, text: str) -> List[Tuple[int, str]]:
@@ -103,7 +107,7 @@ class MarkdownParser:
         except ClassNotFound:
             try:
                 lexer = guess_lexer(code)
-            except:
+            except Exception:
                 lexer = get_lexer_by_name('text')
 
         formatter = HtmlFormatter(style='monokai', noclasses=True)

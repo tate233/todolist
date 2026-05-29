@@ -1,9 +1,13 @@
+import logging
 import json
 import math
 import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Tuple
+
+
+logger = logging.getLogger(__name__)
 
 
 class SearchEngine:
@@ -30,7 +34,7 @@ class SearchEngine:
                     self.doc_ids = set(saved_ids)
                     self.total_docs = data.get('total_docs', len(self.doc_ids))
             except Exception as e:
-                print(f"加载索引失败: {e}")
+                logger.exception("加载索引失败: %s", e)
                 self._initialize_index()
         else:
             self._initialize_index()
@@ -53,7 +57,7 @@ class SearchEngine:
                 json.dump(data, f, indent=4, ensure_ascii=False)
             return True
         except Exception as e:
-            print(f"保存索引失败: {e}")
+            logger.exception("保存索引失败: %s", e)
             return False
 
     def tokenize(self, text: str) -> List[str]:
