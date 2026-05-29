@@ -72,6 +72,7 @@ class Config:
 
         self.auto_save = True
         self.auto_save_interval = 30
+        self.silent_auto_save = True
         self.max_recent_notes = 10
         self.enable_markdown_preview = True
         self.enable_syntax_highlight = True
@@ -106,9 +107,11 @@ class Config:
                 'window_height': self.window_height,
                 'auto_save': self.auto_save,
                 'auto_save_interval': self.auto_save_interval,
+                'silent_auto_save': self.silent_auto_save,
                 'categories': self.categories,
                 'enable_markdown_preview': self.enable_markdown_preview,
-                'enable_syntax_highlight': self.enable_syntax_highlight
+                'enable_syntax_highlight': self.enable_syntax_highlight,
+                'storage_backend': self.storage_backend
             }
             atomic_write_json(self.config_file, config_data)
             return True
