@@ -34,6 +34,7 @@ class SearchEngine:
                         saved_ids = {nid for postings in self.inverted_index.values()
                                      for nid in postings}
                     self.doc_ids = set(saved_ids)
+                    self.doc_len = data.get('doc_len', {})
                     self.total_docs = data.get('total_docs', len(self.doc_ids))
             except Exception as e:
                 logger.exception("加载索引失败: %s", e)
@@ -45,6 +46,7 @@ class SearchEngine:
         self.inverted_index = {}
         self.document_freq = {}
         self.doc_ids = set()
+        self.doc_len = {}
         self.total_docs = 0
 
     def save_index(self):
@@ -53,6 +55,7 @@ class SearchEngine:
                 'inverted_index': self.inverted_index,
                 'document_freq': self.document_freq,
                 'doc_ids': sorted(self.doc_ids),
+                'doc_len': self.doc_len,
                 'total_docs': self.total_docs
             }
             atomic_write_json(self.index_file, data)
@@ -87,6 +90,7 @@ class SearchEngine:
             term_freq = defaultdict(int)
             for token in tokens:
                 term_freq[token] += 1
+            self.doc_len[note_id] = len(tokens)
 
             for term, freq in term_freq.items():
                 if term not in self.inverted_index:
@@ -105,6 +109,7 @@ class SearchEngine:
         term_freq = defaultdict(int)
         for token in tokens:
             term_freq[token] += 1
+        self.doc_len[note_id] = len(tokens)
 
         for term, freq in term_freq.items():
             if term not in self.inverted_index:
@@ -136,6 +141,7 @@ class SearchEngine:
         if note_id in self.doc_ids:
             self.doc_ids.discard(note_id)
             self.total_docs = max(0, self.total_docs - 1)
+        self.doc_len.pop(note_id, None)
         self.save_index()
 
     def calculate_tf_idf(self, term: str, note_id: str) -> float:
@@ -152,7 +158,9 @@ class SearchEngine:
             return 0.0
 
         idf = math.log((self.total_docs + 1) / (df + 1))
-        return tf * idf
+        # normalise tf by document length so long notes don't dominate
+        dl = self.doc_len.get(note_id) or 1
+        return (tf / dl) * idf
 
     def search(self, query: str, notes: Dict, limit: int = 20) -> List[Tuple[str, float]]:
         if not query or not notes:
