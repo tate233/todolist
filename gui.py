@@ -36,6 +36,9 @@ class SmartNotesApp:
         self.attachments = AttachmentManager(config.attachments_dir, config.attachments_index)
         from task_model import TaskManager  # noqa: PLC0415
         self.task_manager = TaskManager(config.tasks_db)
+        from reminder import ReminderService  # noqa: PLC0415
+        self.reminder_service = ReminderService(getattr(config, 'reminder_lead_days', 1))
+        self.reminder_job = None
 
         self.current_note = None
         self.auto_save_job = None
@@ -49,6 +52,8 @@ class SmartNotesApp:
 
         if config.auto_save:
             self.start_auto_save()
+        if getattr(config, 'reminder_enabled', True):
+            self.start_reminders()
 
     def setup_styles(self):
         style = ttk.Style()
@@ -1555,6 +1560,16 @@ class SmartNotesApp:
 
         self.auto_save_job = self.root.after(config.auto_save_interval * 1000,
                                             self.start_auto_save)
+
+    def start_reminders(self):
+        import reminder  # noqa: PLC0415
+        due = self.reminder_service.scan(self.task_manager.get_all_tasks())
+        for t in due:
+            msg = f"任务「{t.title}」即将到期 ({t.due_date})"
+            self._set_status("⏰ " + msg)
+            reminder.notify("任务提醒", msg)
+        interval = getattr(config, 'reminder_interval', 300)
+        self.reminder_job = self.root.after(interval * 1000, self.start_reminders)
 
     def on_closing(self):
         if self.is_modified:
