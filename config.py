@@ -52,6 +52,7 @@ class Config:
         self.exports_dir = self.data_dir / "exports"
         self.database_file = self.data_dir / "notes.db"
         self.sqlite_file = self.data_dir / "notes.sqlite3"
+        self.tasks_db = self.data_dir / "tasks.db"
         self.config_file = self.data_dir / "config.json"
         self.index_file = self.data_dir / "search_index.json"
 
