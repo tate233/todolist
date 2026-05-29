@@ -487,3 +487,18 @@ class KnowledgeGraph:
             'communities': len(self.get_communities()),
             'avg_connections': len(self.edges) * 2 / max(1, len(self.nodes))
         }
+
+    def to_networkx(self):
+        """Export the graph as a networkx.Graph with node attributes for layout
+        and rendering (title/category + degree centrality)."""
+        import networkx as nx  # noqa: PLC0415
+        g = nx.Graph()
+        for node_id, data in self.nodes.items():
+            g.add_node(node_id, title=data.get('title', ''),
+                       category=data.get('category', ''))
+        for a, b in self.edges:
+            g.add_edge(a, b)
+        if g.number_of_nodes():
+            centrality = nx.degree_centrality(g)
+            nx.set_node_attributes(g, centrality, "centrality")
+        return g
