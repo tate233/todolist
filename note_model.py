@@ -1,5 +1,5 @@
-import logging
 import json
+import logging
 import re
 import uuid
 from datetime import datetime
@@ -8,7 +8,6 @@ from typing import Dict, List, Optional
 
 from markdown_parser import count_words
 from storage.atomic_io import atomic_write_json, atomic_write_text
-
 
 logger = logging.getLogger(__name__)
 
