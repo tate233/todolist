@@ -1,3 +1,4 @@
+import argparse
 import shutil
 import subprocess
 import sys
@@ -80,15 +81,22 @@ def build_executable():
         return False
 
 def main():
-    response = input("是否开始构建可执行文件？(y/n): ")
-    if response.lower() not in ['y', 'yes', '是']:
-        print("已取消构建")
+    parser = argparse.ArgumentParser(description="Build the SmartNotes executable")
+    parser.add_argument("-y", "--yes", action="store_true",
+                        help="build without the interactive prompt (for CI)")
+    args = parser.parse_args()
+
+    # Non-interactive when -y/--yes is passed or when stdin is not a TTY (CI).
+    if not args.yes and sys.stdin.isatty():
+        response = input("是否开始构建可执行文件？(y/n): ")
+        if response.lower() not in ['y', 'yes', '是']:
+            print("已取消构建")
+            return
+
     if build_executable():
-        print()
-        input("按回车键退出...")
+        print("构建完成")
     else:
-        print()
-        input("构建失败，按回车键退出...")
+        print("构建失败")
         sys.exit(1)
 
 if __name__ == "__main__":
