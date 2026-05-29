@@ -1,7 +1,7 @@
 [project]
 name = "todolist"
-version = "0.1.0"
-description = "Add your description here"
+version = "1.0.0"
+description = "SmartNotes - 智能笔记管理系统"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
