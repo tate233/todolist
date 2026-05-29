@@ -1,11 +1,44 @@
 import json
+import re
 from pathlib import Path
+
+
+def _detect_version() -> str:
+    """Resolve the application version from a single source of truth.
+
+    Order: installed package metadata -> pyproject.toml -> fallback. This
+    avoids the version drifting between config.py and pyproject.toml.
+    """
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+        try:
+            return version("todolist")
+        except PackageNotFoundError:
+            pass
+    except Exception:
+        pass
+
+    pyproject = Path(__file__).resolve().parent / "pyproject.toml"
+    if pyproject.exists():
+        try:
+            import tomllib
+            with open(pyproject, "rb") as f:
+                return tomllib.load(f)["project"]["version"]
+        except Exception:
+            try:
+                text = pyproject.read_text(encoding="utf-8")
+                m = re.search(r'^version\s*=\s*"([^"]+)"', text, re.MULTILINE)
+                if m:
+                    return m.group(1)
+            except Exception:
+                pass
+    return "0.0.0"
 
 
 class Config:
     def __init__(self):
         self.app_name = "智能笔记管理系统"
-        self.version = "1.0.0"
+        self.version = _detect_version()
         self.author = "开源项目"
 
         self.data_dir = Path.home() / ".smart_notes"
