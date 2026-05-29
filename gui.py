@@ -154,6 +154,8 @@ class SmartNotesApp:
         tools_menu.add_command(label="知识图谱", command=self.show_knowledge_graph)
         tools_menu.add_command(label="重建索引", command=self.rebuild_search_index)
         tools_menu.add_command(label="数据体检", command=self.run_integrity_check)
+        tools_menu.add_separator()
+        tools_menu.add_command(label="设置", command=self.show_settings)
 
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="帮助", menu=help_menu)
@@ -715,6 +717,53 @@ class SmartNotesApp:
     def rebuild_search_index(self):
         self.search_engine.build_index(self.note_manager.notes)
         messagebox.showinfo("成功", "搜索索引已重建")
+
+    def show_settings(self):
+        dialog = tk.Toplevel(self.root)
+        dialog.title("设置")
+        dialog.transient(self.root)
+        dialog.configure(bg=self.colors['bg_card'])
+        pad = {'padx': 10, 'pady': 6}
+
+        auto_save_var = tk.BooleanVar(value=config.auto_save)
+        tk.Checkbutton(dialog, text="启用自动保存", variable=auto_save_var,
+                       bg=self.colors['bg_card']).grid(row=0, column=0, columnspan=2, sticky='w', **pad)
+
+        silent_var = tk.BooleanVar(value=config.silent_auto_save)
+        tk.Checkbutton(dialog, text="静默自动保存（不弹窗）", variable=silent_var,
+                       bg=self.colors['bg_card']).grid(row=1, column=0, columnspan=2, sticky='w', **pad)
+
+        interval_lbl = tk.Label(dialog, text="自动保存间隔（秒）:", bg=self.colors['bg_card'])
+        interval_lbl.grid(row=2, column=0, sticky='e', **pad)
+        interval_var = tk.IntVar(value=config.auto_save_interval)
+        interval_spin = tk.Spinbox(dialog, from_=5, to=600, textvariable=interval_var, width=8)
+        interval_spin.grid(row=2, column=1, sticky='w', **pad)
+
+        preview_var = tk.BooleanVar(value=config.enable_markdown_preview)
+        tk.Checkbutton(dialog, text="启用 Markdown 预览", variable=preview_var,
+                       bg=self.colors['bg_card']).grid(row=3, column=0, columnspan=2, sticky='w', **pad)
+
+        highlight_var = tk.BooleanVar(value=config.enable_syntax_highlight)
+        tk.Checkbutton(dialog, text="启用语法高亮", variable=highlight_var,
+                       bg=self.colors['bg_card']).grid(row=4, column=0, columnspan=2, sticky='w', **pad)
+
+        def apply_settings():
+            config.auto_save = auto_save_var.get()
+            config.silent_auto_save = silent_var.get()
+            config.auto_save_interval = max(5, int(interval_var.get()))
+            config.enable_markdown_preview = preview_var.get()
+            config.enable_syntax_highlight = highlight_var.get()
+            config.save_config()
+            # restart the auto-save timer so interval/toggle take effect now
+            if self.auto_save_job:
+                self.root.after_cancel(self.auto_save_job)
+                self.auto_save_job = None
+            if config.auto_save:
+                self.start_auto_save()
+            dialog.destroy()
+            self._set_status("设置已保存")
+
+        tk.Button(dialog, text="保存", command=apply_settings).grid(row=5, column=0, columnspan=2, pady=12)
 
     def run_integrity_check(self):
         import integrity  # noqa: PLC0415
