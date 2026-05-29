@@ -1,5 +1,6 @@
 import logging
 import json
+import re
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -90,6 +91,26 @@ class NoteManager:
         self.notes_dir = notes_dir
         self.notes: Dict[str, Note] = {}
         self.load_notes()
+        self.sync_note_files()
+
+    def sync_note_files(self):
+        """Reconcile the per-note .md export files with the authoritative JSON.
+
+        The JSON store (notes.db) is the source of truth; the .md files are a
+        rebuildable export. This rewrites any missing/stale .md and removes
+        orphan .md files left behind by partial failures, keeping the two sets
+        consistent.
+        """
+        valid = set()
+        for note in self.notes.values():
+            self._save_note_file(note)
+            valid.add(f"{note.id}.md")
+        try:
+            for path in self.notes_dir.glob("*.md"):
+                if path.name not in valid:
+                    path.unlink()
+        except OSError:
+            logger.exception("清理孤立 .md 文件失败")
 
     def load_notes(self):
         if self.storage_path.exists():
@@ -265,12 +286,30 @@ class NoteManager:
             logger.exception("导出笔记失败: %s", e)
             return False
 
+    def _unique_title(self, base: str) -> str:
+        existing = {note.title for note in self.notes.values()}
+        if base not in existing:
+            return base
+        i = 2
+        while f"{base} ({i})" in existing:
+            i += 1
+        return f"{base} ({i})"
+
     def import_note(self, filepath: Path, category: str = "未分类") -> Optional[Note]:
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 content = f.read()
 
-            title = filepath.stem
+            # Prefer the first Markdown heading as the title; fall back to the
+            # file stem. De-duplicate so importing two same-named files does not
+            # collide on title.
+            title = None
+            for line in content.splitlines():
+                heading = re.match(r'^#{1,6}\s+(.+)', line.strip())
+                if heading:
+                    title = heading.group(1).strip()
+                    break
+            title = self._unique_title(title or filepath.stem)
             note = self.create_note(title, content, category)
             return note
         except Exception as e:
