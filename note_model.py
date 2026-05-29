@@ -300,6 +300,27 @@ class NoteManager:
             tags.update(note.tags)
         return sorted(list(tags))
 
+    def tag_frequencies(self) -> Dict[str, int]:
+        freq: Dict[str, int] = {}
+        for note in self.get_all_notes():
+            for tag in note.tags:
+                freq[tag] = freq.get(tag, 0) + 1
+        return freq
+
+    def tag_cloud(self, buckets: int = 5) -> List[tuple]:
+        """Return [(tag, count, size)] sorted by count desc; size in 1..buckets
+        scaled to frequency for a tag-cloud rendering."""
+        freq = self.tag_frequencies()
+        if not freq:
+            return []
+        hi, lo = max(freq.values()), min(freq.values())
+        span = (hi - lo) or 1
+        out = []
+        for tag, count in sorted(freq.items(), key=lambda kv: (-kv[1], kv[0])):
+            size = 1 + round((count - lo) / span * (buckets - 1))
+            out.append((tag, count, size))
+        return out
+
     def get_statistics(self) -> Dict:
         active = self.get_all_notes()
         total_notes = len(active)
