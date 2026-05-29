@@ -55,6 +55,7 @@ class Config:
         self.sqlite_file = self.data_dir / "notes.sqlite3"
         self.tasks_db = self.data_dir / "tasks.db"
         self.history_file = self.data_dir / "history.json"
+        self.attachments_index = self.attachments_dir / "index.json"
         self.config_file = self.data_dir / "config.json"
         self.index_file = self.data_dir / "search_index.json"
 
