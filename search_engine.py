@@ -3,6 +3,7 @@ import json
 import math
 import re
 from collections import defaultdict
+from itertools import combinations
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -266,14 +267,25 @@ class KnowledgeGraph:
                 if linked_id in self.nodes:
                     self.edges.append((note_id, linked_id))
 
+        # Tag co-occurrence edges via an inverted tag index instead of an
+        # O(N^2) all-pairs comparison: only notes that actually share a tag are
+        # ever compared, and an edge is added when a pair shares >= 2 tags.
+        tag_index = defaultdict(list)
         for note_id, note in notes.items():
-            for other_id, other_note in notes.items():
-                if note_id != other_id:
-                    common_tags = set(note.tags) & set(other_note.tags)
-                    if len(common_tags) >= 2:
-                        edge = (note_id, other_id)
-                        if edge not in self.edges and (other_id, note_id) not in self.edges:
-                            self.edges.append(edge)
+            for tag in set(note.tags):
+                tag_index[tag].append(note_id)
+
+        shared_counts = defaultdict(int)
+        for ids in tag_index.values():
+            for a, b in combinations(sorted(ids), 2):
+                shared_counts[(a, b)] += 1
+
+        existing = set(self.edges) | {(b, a) for a, b in self.edges}
+        for (a, b), count in shared_counts.items():
+            if count >= 2 and (a, b) not in existing:
+                self.edges.append((a, b))
+                existing.add((a, b))
+                existing.add((b, a))
 
     def get_connected_notes(self, note_id: str, depth: int = 1) -> List[str]:
         if note_id not in self.nodes:
