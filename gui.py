@@ -20,6 +20,9 @@ class SmartNotesApp:
 
         import theme  # noqa: PLC0415
         self.colors = theme.get_theme(getattr(config, 'theme', theme.DEFAULT_THEME))
+        import i18n  # noqa: PLC0415
+        i18n.set_language(getattr(config, 'language', i18n.DEFAULT_LANG))
+        self._t = i18n.t
 
         self.root.configure(bg=self.colors['bg_main'])
 
@@ -120,7 +123,7 @@ class SmartNotesApp:
         self.root.config(menu=menubar)
 
         file_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="文件", menu=file_menu)
+        menubar.add_cascade(label=self._t("menu.file"), menu=file_menu)
         file_menu.add_command(label="新建笔记", command=self.create_note, accelerator="Ctrl+N")
         file_menu.add_command(label="保存笔记", command=self.save_current_note, accelerator="Ctrl+S")
         file_menu.add_separator()
@@ -135,7 +138,7 @@ class SmartNotesApp:
         file_menu.add_command(label="退出", command=self.on_closing)
 
         edit_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="编辑", menu=edit_menu)
+        menubar.add_cascade(label=self._t("menu.edit"), menu=edit_menu)
         edit_menu.add_command(label="撤销", command=self.editor_undo, accelerator="Ctrl+Z")
         edit_menu.add_command(label="重做", command=self.editor_redo, accelerator="Ctrl+Y")
         edit_menu.add_separator()
@@ -145,7 +148,7 @@ class SmartNotesApp:
         self._build_view_menu(menubar)
 
         tools_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="工具", menu=tools_menu)
+        menubar.add_cascade(label=self._t("menu.tools"), menu=tools_menu)
         tools_menu.add_command(label="统计信息", command=self.show_statistics)
         tools_menu.add_command(label="知识图谱", command=self.show_knowledge_graph)
         tools_menu.add_command(label="重建索引", command=self.rebuild_search_index)
@@ -155,14 +158,14 @@ class SmartNotesApp:
         tools_menu.add_command(label="设置", command=self.show_settings)
 
         todo_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="待办", menu=todo_menu)
+        menubar.add_cascade(label=self._t("menu.todo"), menu=todo_menu)
         todo_menu.add_command(label="待办列表", command=self.show_todo_view)
         todo_menu.add_command(label="任务仪表盘", command=self.show_dashboard)
         todo_menu.add_command(label="任务看板", command=self.show_kanban)
         todo_menu.add_command(label="任务日历", command=self.show_calendar)
 
         help_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="帮助", menu=help_menu)
+        menubar.add_cascade(label=self._t("menu.help"), menu=help_menu)
         help_menu.add_command(label="使用说明", command=self.show_help)
         help_menu.add_command(label="关于", command=self.show_about)
 
@@ -170,7 +173,7 @@ class SmartNotesApp:
 
     def _build_view_menu(self, menubar):
         view_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="视图", menu=view_menu)
+        menubar.add_cascade(label=self._t("menu.view"), menu=view_menu)
         view_menu.add_command(label="预览模式", command=self.toggle_preview)
         view_menu.add_command(label="编辑/分栏/预览切换", command=self.cycle_view_mode)
         view_menu.add_command(label="笔记任务清单", command=self.show_note_tasks)
@@ -1272,6 +1275,12 @@ class SmartNotesApp:
         ttk.Combobox(dialog, textvariable=theme_var, values=theme.available_themes(),
                      state='readonly', width=12).grid(row=5, column=1, sticky='w', **pad)
 
+        import i18n  # noqa: PLC0415
+        tk.Label(dialog, text="语言:", bg=self.colors['bg_card']).grid(row=6, column=0, sticky='e', **pad)
+        lang_var = tk.StringVar(value=getattr(config, 'language', i18n.DEFAULT_LANG))
+        ttk.Combobox(dialog, textvariable=lang_var, values=i18n.available_languages(),
+                     state='readonly', width=12).grid(row=6, column=1, sticky='w', **pad)
+
         def apply_settings():
             config.auto_save = auto_save_var.get()
             config.silent_auto_save = silent_var.get()
@@ -1279,6 +1288,7 @@ class SmartNotesApp:
             config.enable_markdown_preview = preview_var.get()
             config.enable_syntax_highlight = highlight_var.get()
             config.theme = theme_var.get()
+            config.language = lang_var.get()
             config.save_config()
             # restart the auto-save timer so interval/toggle take effect now
             if self.auto_save_job:
@@ -1289,7 +1299,7 @@ class SmartNotesApp:
             dialog.destroy()
             self._set_status("设置已保存（主题将在重启后完全生效）")
 
-        tk.Button(dialog, text="保存", command=apply_settings).grid(row=6, column=0, columnspan=2, pady=12)
+        tk.Button(dialog, text="保存", command=apply_settings).grid(row=7, column=0, columnspan=2, pady=12)
 
     def show_trash(self):
         trash = self.note_manager.get_trash()
