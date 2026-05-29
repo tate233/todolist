@@ -57,3 +57,10 @@ ignore=[
 [tool.ruff.lint.pylint]
 max-nested-blocks = 4
 
+[tool.mypy]
+# Progressive typing: lenient defaults, tightened per-module over time.
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_ignores = false
+warn_redundant_casts = true
+
