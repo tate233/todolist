@@ -25,9 +25,8 @@ Thumbs.db
 # Project specific
 *.spec
 
-# Keep dist folder with executable
-!dist/
-dist/*
+# Build artifacts (produced by CI / PyInstaller, never committed)
+dist/
 node_modules
 scripts/
 COMMIT_JOURNAL.md
