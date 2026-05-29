@@ -3,6 +3,8 @@ import json
 import re
 from pathlib import Path
 
+from storage.atomic_io import atomic_write_json
+
 
 logger = logging.getLogger(__name__)
 
@@ -105,8 +107,7 @@ class Config:
                 'enable_markdown_preview': self.enable_markdown_preview,
                 'enable_syntax_highlight': self.enable_syntax_highlight
             }
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            atomic_write_json(self.config_file, config_data)
             return True
         except Exception as e:
             logger.exception("保存配置失败: %s", e)

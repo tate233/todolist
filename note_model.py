@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from markdown_parser import count_words
+from storage.atomic_io import atomic_write_json, atomic_write_text
 
 
 logger = logging.getLogger(__name__)
@@ -108,8 +109,7 @@ class NoteManager:
     def save_notes(self):
         try:
             data = {note_id: note.to_dict() for note_id, note in self.notes.items()}
-            with open(self.storage_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
+            atomic_write_json(self.storage_path, data)
             return True
         except Exception as e:
             logger.exception("保存笔记失败: %s", e)
@@ -282,8 +282,7 @@ class NoteManager:
             filename = f"{note.id}.md"
             filepath = self.notes_dir / filename
 
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write(note.content)
+            atomic_write_text(filepath, note.content)
         except Exception as e:
             logger.exception("保存笔记文件失败: %s", e)
 
