@@ -17,6 +17,10 @@ pip install -r requirements.txt
 # 或者 uv sync 按照pyproject.toml来同步
 ```
 
+> `requirements.txt` 与 `pyproject.toml` 的 `dependencies` 仅包含运行时实际 import 的依赖
+> （markdown / pygments / networkx / pillow）。构建与开发工具位于 `[dependency-groups]`
+> 的 `build`（pyinstaller）与 `dev`（ruff / pytest / mypy）可选组，按需安装。
+
 ### 步骤2：运行程序
 
 ```bash
