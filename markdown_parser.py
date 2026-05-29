@@ -295,6 +295,35 @@ class MarkdownParser:
         text = re.sub(r'\n{3,}', '\n\n', text)
         return text.strip()
 
+    def make_snippet(self, text: str, query: str, context: int = 40):
+        """Return (snippet, hit_spans) around the first match of query.
+
+        snippet is plain text; hit_spans are (start, end) offsets within the
+        snippet for highlighting. Falls back to the head of the text if no hit.
+        """
+        plain = self.convert_to_plain_text(text)
+        plain = re.sub(r'\s+', ' ', plain).strip()
+        if not query:
+            return plain[: context * 2], []
+        pos = plain.lower().find(query.lower())
+        if pos == -1:
+            return plain[: context * 2], []
+        start = max(0, pos - context)
+        end = min(len(plain), pos + len(query) + context)
+        snippet = plain[start:end]
+        prefix = "…" if start > 0 else ""
+        suffix = "…" if end < len(plain) else ""
+        snippet = prefix + snippet + suffix
+        # recompute hit spans inside the (possibly prefixed) snippet
+        spans = []
+        q = query.lower()
+        s = snippet.lower()
+        i = s.find(q)
+        while i != -1:
+            spans.append((i, i + len(q)))
+            i = s.find(q, i + len(q))
+        return snippet, spans
+
     def search_in_markdown(self, text: str, keyword: str) -> List[Tuple[int, str]]:
         if not keyword:
             return []
