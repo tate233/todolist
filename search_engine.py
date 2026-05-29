@@ -185,6 +185,57 @@ class SearchEngine:
         dl = self.doc_len.get(note_id) or 1
         return (tf / dl) * idf
 
+    def _avg_doc_len(self) -> float:
+        if not self.doc_len:
+            return 1.0
+        return sum(self.doc_len.values()) / len(self.doc_len)
+
+    def calculate_bm25(self, term: str, note_id: str, k1: float = 1.5, b: float = 0.75) -> float:
+        """Okapi BM25 term score for a (term, document) pair."""
+        if term not in self.inverted_index or note_id not in self.inverted_index[term]:
+            return 0.0
+        df = self.document_freq.get(term, 0)
+        if df == 0 or self.total_docs == 0:
+            return 0.0
+        tf = self.inverted_index[term][note_id]
+        idf = math.log(1 + (self.total_docs - df + 0.5) / (df + 0.5))
+        dl = self.doc_len.get(note_id) or 1
+        avg = self._avg_doc_len()
+        denom = tf + k1 * (1 - b + b * dl / avg)
+        return idf * (tf * (k1 + 1)) / denom if denom else 0.0
+
+    def search_bm25(self, query: str, notes: Dict, limit: int = 20,
+                    field_weights: Dict[str, float] = None) -> List[Tuple[str, float]]:
+        """BM25 ranking with optional field weighting (title > tags > content)."""
+        if not query or not notes:
+            return []
+        tokens = self.tokenize(query)
+        if not tokens:
+            return []
+        try:
+            from config import config  # noqa: PLC0415
+            k1 = getattr(config, "bm25_k1", 1.5)
+            b = getattr(config, "bm25_b", 0.75)
+        except Exception:
+            k1, b = 1.5, 0.75
+        weights = field_weights or {"title": 3.0, "tags": 2.0, "content": 1.0}
+
+        scores = defaultdict(float)
+        for token in tokens:
+            for note_id in self.inverted_index.get(token, {}):
+                if note_id in notes:
+                    scores[note_id] += self.calculate_bm25(token, note_id, k1, b)
+        # field-weight multipliers via substring presence (cheap, additive)
+        q = query.lower()
+        for note_id, note in notes.items():
+            if note is None or note_id not in scores:
+                continue
+            if q in note.title.lower():
+                scores[note_id] *= weights["title"]
+            elif any(q in tag.lower() for tag in note.tags):
+                scores[note_id] *= weights["tags"]
+        return sorted(scores.items(), key=lambda x: x[1], reverse=True)[:limit]
+
     def search(self, query: str, notes: Dict, limit: int = 20) -> List[Tuple[str, float]]:
         if not query or not notes:
             return []
