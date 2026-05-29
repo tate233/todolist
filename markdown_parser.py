@@ -119,6 +119,34 @@ class MarkdownParser:
             segments.append((line[pos:], ''))
         return segments or [(line, '')]
 
+    # (tag, compiled-regex) pairs scanned per line for editor highlighting.
+    _hl_line_patterns = [
+        ("md_heading", re.compile(r'^#{1,6}\s.*$')),
+        ("md_quote", re.compile(r'^>\s.*$')),
+        ("md_list", re.compile(r'^\s*[-*+]\s')),
+    ]
+    _hl_inline_patterns = [
+        ("md_bold", re.compile(r'\*\*[^*]+\*\*')),
+        ("md_italic", re.compile(r'(?<!\*)\*[^*\s][^*]*\*(?!\*)')),
+        ("md_code", re.compile(r'`[^`]+`')),
+        ("md_link", re.compile(r'\[[^\]]+\]\([^)]+\)')),
+    ]
+
+    def highlight_spans(self, line: str) -> List[Tuple[str, int, int]]:
+        """Return (tag, start_col, end_col) spans for a single editor line.
+
+        Used by the editor to apply Tk text tags as the user types. Whole-line
+        markers (heading/quote/list) span the line; inline markers span their match.
+        """
+        spans: List[Tuple[str, int, int]] = []
+        for tag, pat in self._hl_line_patterns:
+            if pat.match(line):
+                spans.append((tag, 0, len(line)))
+                break
+        for tag, pat in self._hl_inline_patterns:
+            spans.extend((tag, m.start(), m.end()) for m in pat.finditer(line))
+        return spans
+
     def render_blocks(self, text: str) -> List[Tuple[str, List[Tuple[str, str]]]]:
         """Lightweight structural parse for the Tk preview.
 
