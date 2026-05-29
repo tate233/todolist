@@ -21,7 +21,14 @@ class SearchEngine:
                     data = json.load(f)
                     self.inverted_index = data.get('inverted_index', {})
                     self.document_freq = data.get('document_freq', {})
-                    self.total_docs = data.get('total_docs', 0)
+                    # doc_ids tracks which note ids are indexed so counting stays
+                    # idempotent across edits; derive it for legacy index files.
+                    saved_ids = data.get('doc_ids')
+                    if saved_ids is None:
+                        saved_ids = {nid for postings in self.inverted_index.values()
+                                     for nid in postings}
+                    self.doc_ids = set(saved_ids)
+                    self.total_docs = data.get('total_docs', len(self.doc_ids))
             except Exception as e:
                 print(f"加载索引失败: {e}")
                 self._initialize_index()
@@ -31,6 +38,7 @@ class SearchEngine:
     def _initialize_index(self):
         self.inverted_index = {}
         self.document_freq = {}
+        self.doc_ids = set()
         self.total_docs = 0
 
     def save_index(self):
@@ -38,6 +46,7 @@ class SearchEngine:
             data = {
                 'inverted_index': self.inverted_index,
                 'document_freq': self.document_freq,
+                'doc_ids': sorted(self.doc_ids),
                 'total_docs': self.total_docs
             }
             with open(self.index_file, 'w', encoding='utf-8') as f:
@@ -56,7 +65,8 @@ class SearchEngine:
 
     def build_index(self, notes: Dict):
         self._initialize_index()
-        self.total_docs = len(notes)
+        self.doc_ids = set(notes.keys())
+        self.total_docs = len(self.doc_ids)
 
         for note_id, note in notes.items():
             text = f"{note.title} {note.content} {' '.join(note.tags)}"
