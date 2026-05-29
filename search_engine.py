@@ -301,28 +301,41 @@ class KnowledgeGraph:
 
         return isolated
 
+    def _build_adjacency(self) -> Dict[str, set]:
+        """Build an undirected adjacency map once, instead of rescanning the
+        full edge list for every node visit."""
+        adjacency = {node_id: set() for node_id in self.nodes}
+        for a, b in self.edges:
+            if a in adjacency:
+                adjacency[a].add(b)
+            if b in adjacency:
+                adjacency[b].add(a)
+        return adjacency
+
     def get_communities(self) -> List[List[str]]:
+        adjacency = self._build_adjacency()
         visited = set()
         communities = []
 
-        def dfs(node, community):
-            if node in visited:
-                return
-            visited.add(node)
-            community.append(node)
-
-            for edge in self.edges:
-                if edge[0] == node:
-                    dfs(edge[1], community)
-                elif edge[1] == node:
-                    dfs(edge[0], community)
-
-        for node_id in self.nodes:
-            if node_id not in visited:
-                community = []
-                dfs(node_id, community)
-                if len(community) > 1:
-                    communities.append(community)
+        # Iterative connected-components (explicit stack) avoids the recursion
+        # depth limit / stack overflow the previous recursive DFS hit on long
+        # note chains.
+        for start in self.nodes:
+            if start in visited:
+                continue
+            stack = [start]
+            community = []
+            while stack:
+                node = stack.pop()
+                if node in visited:
+                    continue
+                visited.add(node)
+                community.append(node)
+                for neighbor in adjacency.get(node, ()):
+                    if neighbor not in visited:
+                        stack.append(neighbor)
+            if len(community) > 1:
+                communities.append(community)
 
         return communities
 
