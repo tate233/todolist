@@ -28,3 +28,5 @@ Thumbs.db
 # Keep dist folder with executable
 !dist/
 dist/*
+node_modules
+scripts/
