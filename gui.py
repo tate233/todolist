@@ -136,11 +136,11 @@ class SmartNotesApp:
 
         edit_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="编辑", menu=edit_menu)
-        edit_menu.add_command(label="撤销", accelerator="Ctrl+Z")
-        edit_menu.add_command(label="重做", accelerator="Ctrl+Y")
+        edit_menu.add_command(label="撤销", command=self.editor_undo, accelerator="Ctrl+Z")
+        edit_menu.add_command(label="重做", command=self.editor_redo, accelerator="Ctrl+Y")
         edit_menu.add_separator()
         edit_menu.add_command(label="查找", command=self.show_search, accelerator="Ctrl+F")
-        edit_menu.add_command(label="替换", accelerator="Ctrl+H")
+        edit_menu.add_command(label="替换", command=self.show_replace, accelerator="Ctrl+H")
 
         view_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="视图", menu=view_menu)
@@ -161,6 +161,9 @@ class SmartNotesApp:
         self.root.bind('<Control-n>', lambda e: self.create_note())
         self.root.bind('<Control-s>', lambda e: self.save_current_note())
         self.root.bind('<Control-f>', lambda e: self.show_search())
+        self.root.bind('<Control-z>', self.editor_undo)
+        self.root.bind('<Control-y>', self.editor_redo)
+        self.root.bind('<Control-h>', self.show_replace)
 
     def create_widgets(self):
         main_container = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
