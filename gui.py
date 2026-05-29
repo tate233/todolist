@@ -1,3 +1,4 @@
+import logging
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
@@ -7,6 +8,8 @@ from config import config
 from markdown_parser import MarkdownParser
 from note_model import NoteManager
 from search_engine import KnowledgeGraph, SearchEngine
+
+logger = logging.getLogger(__name__)
 
 
 class SmartNotesApp:
@@ -636,12 +639,43 @@ class SmartNotesApp:
             pt.insert(tk.END, '\n')
         pt.config(state='disabled')
 
+    @staticmethod
+    def _html_preview_widget(parent):
+        """Return an HTMLScrolledText if tkhtmlview is installed, else None."""
+        try:
+            from tkhtmlview import HTMLScrolledText  # noqa: PLC0415
+        except ImportError:
+            return None
+        return HTMLScrolledText(parent, html="")
+
     def toggle_preview(self):
+        content = self.editor_text.get(1.0, tk.END)
+        # If an HTML preview backend is available, prefer it; otherwise fall
+        # back to the Tk-tag renderer introduced earlier.
+        if getattr(self, '_html_preview', 'unset') == 'unset':
+            self._html_preview = self._html_preview_widget(self.editor_text.master)
+
+        if self._html_preview is not None:
+            if self._html_preview.winfo_ismapped():
+                self._html_preview.pack_forget()
+                self.editor_text.pack(fill='both', expand=True)
+            else:
+                self.editor_text.pack_forget()
+                self._html_preview.pack(fill='both', expand=True)
+                try:
+                    html = self.markdown_parser.parse_to_styled_html(content)
+                    self._html_preview.set_html(html)
+                except Exception:
+                    logger.exception("HTML 预览渲染失败，回退到标签渲染")
+                    self._html_preview.pack_forget()
+                    self.preview_text.pack(fill='both', expand=True)
+                    self._render_markdown_preview(content)
+            return
+
         if self.preview_text.winfo_ismapped():
             self.preview_text.pack_forget()
             self.editor_text.pack(fill='both', expand=True)
         else:
-            content = self.editor_text.get(1.0, tk.END)
             self.editor_text.pack_forget()
             self.preview_text.pack(fill='both', expand=True)
             self._render_markdown_preview(content)
