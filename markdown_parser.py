@@ -52,6 +52,19 @@ class MarkdownParser:
             logger.exception("Markdown解析失败: %s", e)
             return f"<pre>{text}</pre>"
 
+    _PREVIEW_CSS = (
+        "body{font-family:'Microsoft YaHei UI',sans-serif;font-size:14px;line-height:1.6;}"
+        "h1,h2,h3{color:#2d3748;}code{background:#f1f1f4;padding:2px 4px;border-radius:3px;}"
+        "pre{background:#2d2d2d;color:#f8f8f2;padding:10px;border-radius:5px;overflow:auto;}"
+        "table{border-collapse:collapse;}td,th{border:1px solid #ccc;padding:4px 8px;}"
+        "blockquote{border-left:4px solid #cbd5e0;margin:0;padding-left:12px;color:#718096;}"
+    )
+
+    def parse_to_styled_html(self, text: str) -> str:
+        """Full HTML document with embedded CSS for an HTML preview widget."""
+        body = self.parse_to_html(text)
+        return f"<html><head><style>{self._PREVIEW_CSS}</style></head><body>{body}</body></html>"
+
     def extract_headings(self, text: str) -> List[Tuple[int, str]]:
         headings = []
         for match in self.heading_pattern.finditer(text):

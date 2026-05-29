@@ -14,6 +14,10 @@ dependencies = [
     "pillow>=10.0,<13",
 ]
 
+[project.optional-dependencies]
+# Richer HTML Markdown preview; the app falls back to a tag renderer without it.
+preview = ["tkhtmlview>=0.2"]
+
 [dependency-groups]
 dev = [
     "ruff>=0.5",
