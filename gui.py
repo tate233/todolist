@@ -153,6 +153,7 @@ class SmartNotesApp:
         tools_menu.add_command(label="统计信息", command=self.show_statistics)
         tools_menu.add_command(label="知识图谱", command=self.show_knowledge_graph)
         tools_menu.add_command(label="重建索引", command=self.rebuild_search_index)
+        tools_menu.add_command(label="数据体检", command=self.run_integrity_check)
 
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="帮助", menu=help_menu)
@@ -714,6 +715,17 @@ class SmartNotesApp:
     def rebuild_search_index(self):
         self.search_engine.build_index(self.note_manager.notes)
         messagebox.showinfo("成功", "搜索索引已重建")
+
+    def run_integrity_check(self):
+        import integrity  # noqa: PLC0415
+        report = integrity.check(self.note_manager, self.search_engine, fix=False)
+        if report.ok:
+            messagebox.showinfo("数据体检", "未发现问题 ✅")
+            return
+        if messagebox.askyesno("数据体检", f"发现问题:\n{report}\n\n是否自动修复？"):
+            fixed = integrity.check(self.note_manager, self.search_engine, fix=True)
+            self.load_notes_list()
+            messagebox.showinfo("数据体检", f"修复完成:\n{fixed}")
 
     def show_search(self):
         self.search_entry.focus()
