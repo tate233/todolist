@@ -517,8 +517,8 @@ class SmartNotesApp:
             is_favorite=is_favorite
         )
 
-        self.search_engine.remove_document(self.current_note.id)
-        self.search_engine.add_document(self.current_note.id, self.current_note)
+        # Incremental, deferred-flush update instead of a full remove+add+rewrite.
+        self.search_engine.update_document(self.current_note.id, self.current_note)
 
         self.is_modified = False
         self.load_notes_list()
@@ -868,6 +868,7 @@ class SmartNotesApp:
             if messagebox.askyesno("保存", "当前笔记已修改，是否保存？"):
                 self.save_current_note()
 
+        self.search_engine.flush()
         config.save_config()
         self.root.destroy()
 
