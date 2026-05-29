@@ -368,3 +368,12 @@ python migrate.py --no-backup
 ```
 
 迁移幂等（已迁移的笔记不会重复导入）；当 `.md` 与 JSON 内容不一致时以 `.md` 为准并在报告中计数。迁移后可设置 `SMARTNOTES_BACKEND=sqlite` 或 `config.storage_backend="sqlite"` 启用 SQLite 后端。
+
+## 依赖锁定与升级策略
+
+- `pyproject.toml` / `requirements.txt` 中的运行时依赖采用区间约束（下限保证所需特性、上限防止破坏性大版本），**不**钉死到补丁号。
+- 精确、可复现的版本由 `uv.lock` 负责锁定。安装时用 `uv sync` 即可获得与锁文件一致的环境。
+- 升级流程：
+  1. 调整 `pyproject.toml` 中的区间（如有必要）；
+  2. 运行 `uv lock --upgrade`（或 `uv lock --upgrade-package <name>`）刷新锁文件；
+  3. 跑 `pytest` 与 `ruff check .` 验证后提交更新后的 `uv.lock`。
