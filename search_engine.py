@@ -63,9 +63,16 @@ class SearchEngine:
 
     def tokenize(self, text: str) -> List[str]:
         text = text.lower()
-        text = re.sub(r'[^\w\s\u4e00-\u9fff]', ' ', text)
-        tokens = text.split()
-        tokens = [token for token in tokens if len(token) > 1]
+        tokens: List[str] = []
+        # Latin/number runs stay whole; CJK runs are split per-character with
+        # bigram fallback so single-character queries and sub-phrases match.
+        for run in re.findall(r'[a-z0-9]+|[\u4e00-\u9fff]+', text):
+            if run[0].isascii():
+                tokens.append(run)
+            else:
+                chars = list(run)
+                tokens.extend(chars)
+                tokens.extend(chars[i] + chars[i + 1] for i in range(len(chars) - 1))
         return tokens
 
     def build_index(self, notes: Dict):
