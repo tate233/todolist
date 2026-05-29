@@ -61,6 +61,22 @@ class AttachmentManager:
         self._add_ref(name, note_id)
         return name
 
+    def add_image(self, pil_image, note_id: str = None) -> str:
+        """Persist a PIL image as PNG (content-addressed) and return the name."""
+        import io  # noqa: PLC0415
+        buf = io.BytesIO()
+        pil_image.save(buf, format="PNG")
+        return self.add_bytes(buf.getvalue(), ".png", note_id)
+
+    @staticmethod
+    def markdown_reference(name: str, alt: str = "image") -> str:
+        """Build the Markdown reference for an attachment by filename."""
+        rel = f"attachments/{name}"
+        image_exts = (".png", ".jpg", ".jpeg", ".gif", ".webp")
+        if name.lower().endswith(image_exts):
+            return f"![{alt}]({rel})"
+        return f"[{alt}]({rel})"
+
     def _add_ref(self, name: str, note_id):
         refs = self.refs.setdefault(name, [])
         if note_id and note_id not in refs:

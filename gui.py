@@ -441,6 +441,8 @@ class SmartNotesApp:
                                                      relief='flat')
         self.editor_text.pack(fill='both', expand=True)
         self.editor_text.bind('<KeyRelease>', self.on_text_change)
+        # Intercept paste to capture clipboard images; falls through for text.
+        self.editor_text.bind('<Control-v>', self.paste_image)
 
         self.preview_text = scrolledtext.ScrolledText(editor_card,
                                                      font=('Microsoft YaHei UI', 11),
@@ -1138,14 +1140,39 @@ class SmartNotesApp:
             return
         try:
             name = self.attachments.add_file(Path(filepath), self.current_note.id)
-            rel = f"attachments/{name}"
-            ext = Path(name).suffix.lower()
-            snippet = f"![{Path(filepath).stem}]({rel})" if ext in (".png", ".jpg", ".jpeg", ".gif") \
-                else f"[{Path(filepath).name}]({rel})"
+            snippet = self.attachments.markdown_reference(name, Path(filepath).stem)
             self.editor_text.insert(tk.INSERT, snippet)
             self.mark_modified()
         except Exception as e:
             messagebox.showerror("插入附件失败", str(e))
+
+    def paste_image(self, event=None):
+        """Paste a clipboard image into the attachments dir and insert a ref.
+
+        Returns None so normal text paste still works when there is no image.
+        """
+        if not self.current_note:
+            return None
+        try:
+            from PIL import ImageGrab  # noqa: PLC0415
+        except ImportError:
+            return None
+        try:
+            img = ImageGrab.grabclipboard()
+        except Exception:
+            return None
+        # ImageGrab returns an Image, a list of file paths, or None
+        from PIL import Image  # noqa: PLC0415
+        if not isinstance(img, Image.Image):
+            return None
+        try:
+            name = self.attachments.add_image(img, self.current_note.id)
+            self.editor_text.insert(tk.INSERT, self.attachments.markdown_reference(name, "pasted"))
+            self.mark_modified()
+            return "break"  # consume the event; we handled the image paste
+        except Exception as e:
+            messagebox.showerror("粘贴图片失败", str(e))
+            return None
 
     def backup_now(self):
         import backup  # noqa: PLC0415
