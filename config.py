@@ -72,6 +72,10 @@ class Config:
         # UI language (see locales/): "zh_CN" | "en_US".
         self.language = "zh_CN"
 
+        # Optional content encryption (requires the 'cryptography' extra).
+        self.encryption_enabled = False
+        self.keystore_file = self.data_dir / "keystore.json"
+
         self.window_width = 1200
         self.window_height = 800
         self.theme_color = "#2c3e50"
@@ -127,7 +131,8 @@ class Config:
                 'enable_syntax_highlight': self.enable_syntax_highlight,
                 'storage_backend': self.storage_backend,
                 'theme': self.theme,
-                'language': self.language
+                'language': self.language,
+                'encryption_enabled': self.encryption_enabled
             }
             atomic_write_json(self.config_file, config_data)
             return True
