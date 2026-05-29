@@ -557,21 +557,48 @@ class SmartNotesApp:
             notes = self.note_manager.get_notes_by_category(category)
             self.load_notes_list(notes)
 
+    def _configure_preview_tags(self):
+        pt = self.preview_text
+        pt.tag_configure('h1', font=('Microsoft YaHei UI', 20, 'bold'), spacing1=8, spacing3=6)
+        pt.tag_configure('h2', font=('Microsoft YaHei UI', 16, 'bold'), spacing1=6, spacing3=4)
+        pt.tag_configure('h3', font=('Microsoft YaHei UI', 13, 'bold'), spacing1=4, spacing3=2)
+        pt.tag_configure('bold', font=('Microsoft YaHei UI', 11, 'bold'))
+        pt.tag_configure('italic', font=('Microsoft YaHei UI', 11, 'italic'))
+        pt.tag_configure('code', font=('Consolas', 10), background='#f1f1f4')
+        pt.tag_configure('list', lmargin1=20, lmargin2=34)
+
+    def _render_markdown_preview(self, content):
+        pt = self.preview_text
+        self._configure_preview_tags()
+        pt.config(state='normal')
+        pt.delete(1.0, tk.END)
+        for block_type, segments in self.markdown_parser.render_blocks(content):
+            if block_type == 'blank':
+                pt.insert(tk.END, '\n')
+                continue
+            line_tags = ()
+            if block_type.startswith('h'):
+                line_tags = (block_type,)
+            elif block_type == 'code_block':
+                line_tags = ('code',)
+            elif block_type == 'list':
+                line_tags = ('list',)
+                pt.insert(tk.END, '• ', line_tags)
+            for seg_text, seg_style in segments:
+                tags = line_tags + ((seg_style,) if seg_style else ())
+                pt.insert(tk.END, seg_text, tags)
+            pt.insert(tk.END, '\n')
+        pt.config(state='disabled')
+
     def toggle_preview(self):
         if self.preview_text.winfo_ismapped():
             self.preview_text.pack_forget()
             self.editor_text.pack(fill='both', expand=True)
         else:
             content = self.editor_text.get(1.0, tk.END)
-            html = self.markdown_parser.parse_to_html(content)
-
             self.editor_text.pack_forget()
             self.preview_text.pack(fill='both', expand=True)
-
-            self.preview_text.config(state='normal')
-            self.preview_text.delete(1.0, tk.END)
-            self.preview_text.insert(1.0, html)
-            self.preview_text.config(state='disabled')
+            self._render_markdown_preview(content)
 
     def on_text_change(self, event):
         self.mark_modified()

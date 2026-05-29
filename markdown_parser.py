@@ -96,6 +96,58 @@ class MarkdownParser:
     def get_word_count(self, text: str) -> int:
         return count_words(text)
 
+    _inline_re = re.compile(r'(\*\*.+?\*\*|__.+?__|\*[^*]+?\*|_[^_]+?_|`[^`]+`)')
+
+    def render_inline(self, line: str) -> List[Tuple[str, str]]:
+        """Split a line into (text, style) segments for Tk Text rendering.
+
+        style is one of: '', 'bold', 'italic', 'code'.
+        """
+        segments: List[Tuple[str, str]] = []
+        pos = 0
+        for m in self._inline_re.finditer(line):
+            if m.start() > pos:
+                segments.append((line[pos:m.start()], ''))
+            tok = m.group(0)
+            if tok.startswith('**') or tok.startswith('__'):
+                segments.append((tok[2:-2], 'bold'))
+            elif tok.startswith('`'):
+                segments.append((tok[1:-1], 'code'))
+            else:
+                segments.append((tok[1:-1], 'italic'))
+            pos = m.end()
+        if pos < len(line):
+            segments.append((line[pos:], ''))
+        return segments or [(line, '')]
+
+    def render_blocks(self, text: str) -> List[Tuple[str, List[Tuple[str, str]]]]:
+        """Lightweight structural parse for the Tk preview.
+
+        Returns a list of (block_type, inline_segments) where block_type is
+        one of: h1/h2/h3, list, code_block, blank, para.
+        """
+        blocks: List[Tuple[str, List[Tuple[str, str]]]] = []
+        in_code = False
+        for raw in text.split('\n'):
+            if raw.strip().startswith('```'):
+                in_code = not in_code
+                continue
+            if in_code:
+                blocks.append(('code_block', [(raw, 'code')]))
+                continue
+            heading = self.heading_pattern.match(raw)
+            if heading:
+                level = min(len(heading.group(1)), 3)
+                blocks.append((f'h{level}', [(heading.group(2).strip(), '')]))
+            elif re.match(r'^\s*[-*+]\s+', raw):
+                item = re.sub(r'^\s*[-*+]\s+(\[[ xX]\]\s+)?', '', raw)
+                blocks.append(('list', self.render_inline(item)))
+            elif raw.strip() == '':
+                blocks.append(('blank', [('', '')]))
+            else:
+                blocks.append(('para', self.render_inline(raw)))
+        return blocks
+
     def get_reading_time(self, text: str, words_per_minute: int = 200) -> int:
         word_count = self.get_word_count(text)
         minutes = max(1, round(word_count / words_per_minute))
