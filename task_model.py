@@ -5,7 +5,7 @@ Note/NoteManager uuid + JSON conventions for consistency.
 """
 import logging
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -66,6 +66,48 @@ class Task:
         self.status = STATUS_DONE
         self.completed_at = datetime.now().strftime(_TS)
 
+    def _due(self):
+        if not self.due_date:
+            return None
+        try:
+            return datetime.strptime(self.due_date, "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            return None
+
+    def is_overdue(self, today=None) -> bool:
+        due = self._due()
+        if due is None or self.status in (STATUS_DONE, STATUS_CANCELLED):
+            return False
+        today = today or date.today()
+        return due < today
+
+    def is_due_today(self, today=None) -> bool:
+        due = self._due()
+        if due is None:
+            return False
+        return due == (today or date.today())
+
+    def days_until_due(self, today=None):
+        due = self._due()
+        if due is None:
+            return None
+        return (due - (today or date.today())).days
+
+
+# Allowed status transitions (state machine).
+_TRANSITIONS = {
+    STATUS_TODO: {STATUS_IN_PROGRESS, STATUS_DONE, STATUS_CANCELLED},
+    STATUS_IN_PROGRESS: {STATUS_TODO, STATUS_DONE, STATUS_CANCELLED},
+    STATUS_DONE: {STATUS_TODO, STATUS_IN_PROGRESS},
+    STATUS_CANCELLED: {STATUS_TODO},
+}
+
+
+def can_transition(from_status: str, to_status: str) -> bool:
+    if from_status == to_status:
+        return True
+    return to_status in _TRANSITIONS.get(from_status, set())
+
 
 class TaskManager:
     def __init__(self, storage_path: Path):
@@ -108,13 +150,30 @@ class TaskManager:
         task = self.get_task(task_id)
         if not task:
             return False
+        new_status = kwargs.get("status")
+        if new_status is not None and not can_transition(task.status, new_status):
+            raise ValueError(f"非法状态流转: {task.status} -> {new_status}")
         for key, value in kwargs.items():
             if hasattr(task, key):
                 setattr(task, key, value)
-        if kwargs.get("status") == STATUS_DONE and not task.completed_at:
+        if new_status == STATUS_DONE and not task.completed_at:
             task.completed_at = datetime.now().strftime(_TS)
         self.save()
         return True
+
+    def get_overdue(self, today=None) -> List[Task]:
+        return [t for t in self.tasks.values() if t.is_overdue(today)]
+
+    def get_due_today(self, today=None) -> List[Task]:
+        return [t for t in self.tasks.values() if t.is_due_today(today)]
+
+    def get_upcoming(self, within_days: int = 7, today=None) -> List[Task]:
+        out = []
+        for t in self.tasks.values():
+            d = t.days_until_due(today)
+            if d is not None and 0 <= d <= within_days and t.status not in (STATUS_DONE, STATUS_CANCELLED):
+                out.append(t)
+        return out
 
     def delete_task(self, task_id: str) -> bool:
         if task_id in self.tasks:
