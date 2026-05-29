@@ -263,17 +263,16 @@ class KnowledgeGraph:
         if note_id not in self.nodes:
             return []
 
+        adjacency = self._build_adjacency()
         connected = set()
         current_level = {note_id}
 
         for _ in range(depth):
             next_level = set()
             for node in current_level:
-                for edge in self.edges:
-                    if edge[0] == node and edge[1] not in connected:
-                        next_level.add(edge[1])
-                    elif edge[1] == node and edge[0] not in connected:
-                        next_level.add(edge[0])
+                for neighbor in adjacency.get(node, ()):
+                    if neighbor not in connected:
+                        next_level.add(neighbor)
 
             connected.update(next_level)
             current_level = next_level
@@ -301,28 +300,41 @@ class KnowledgeGraph:
 
         return isolated
 
+    def _build_adjacency(self) -> Dict[str, set]:
+        """Build an undirected adjacency map once, instead of rescanning the
+        full edge list for every node visit."""
+        adjacency = {node_id: set() for node_id in self.nodes}
+        for a, b in self.edges:
+            if a in adjacency:
+                adjacency[a].add(b)
+            if b in adjacency:
+                adjacency[b].add(a)
+        return adjacency
+
     def get_communities(self) -> List[List[str]]:
+        adjacency = self._build_adjacency()
         visited = set()
         communities = []
 
-        def dfs(node, community):
-            if node in visited:
-                return
-            visited.add(node)
-            community.append(node)
-
-            for edge in self.edges:
-                if edge[0] == node:
-                    dfs(edge[1], community)
-                elif edge[1] == node:
-                    dfs(edge[0], community)
-
-        for node_id in self.nodes:
-            if node_id not in visited:
-                community = []
-                dfs(node_id, community)
-                if len(community) > 1:
-                    communities.append(community)
+        # Iterative connected-components (explicit stack) avoids the recursion
+        # depth limit / stack overflow the previous recursive DFS hit on long
+        # note chains.
+        for start in self.nodes:
+            if start in visited:
+                continue
+            stack = [start]
+            community = []
+            while stack:
+                node = stack.pop()
+                if node in visited:
+                    continue
+                visited.add(node)
+                community.append(node)
+                for neighbor in adjacency.get(node, ()):
+                    if neighbor not in visited:
+                        stack.append(neighbor)
+            if len(community) > 1:
+                communities.append(community)
 
         return communities
 
