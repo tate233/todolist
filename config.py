@@ -66,6 +66,9 @@ class Config:
         self.bm25_k1 = 1.5
         self.bm25_b = 0.75
 
+        # UI theme name (see theme.py): "light" | "dark".
+        self.theme = "light"
+
         self.window_width = 1200
         self.window_height = 800
         self.theme_color = "#2c3e50"
@@ -119,7 +122,8 @@ class Config:
                 'categories': self.categories,
                 'enable_markdown_preview': self.enable_markdown_preview,
                 'enable_syntax_highlight': self.enable_syntax_highlight,
-                'storage_backend': self.storage_backend
+                'storage_backend': self.storage_backend,
+                'theme': self.theme
             }
             atomic_write_json(self.config_file, config_data)
             return True
