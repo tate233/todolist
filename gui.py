@@ -1309,7 +1309,32 @@ class SmartNotesApp:
 
         msg += f"\n索引词条: {search_stats['total_terms']}\n"
 
+        task_stats = self.task_manager.get_task_statistics()
+        if task_stats['total']:
+            msg += "\n📋 任务统计:\n"
+            msg += f"  总数: {task_stats['total']}\n"
+            msg += f"  完成率: {task_stats['completion_rate'] * 100:.0f}%\n"
+            msg += f"  逾期率: {task_stats['overdue_rate'] * 100:.0f}%\n"
+
         messagebox.showinfo("统计信息", msg)
+
+    def start_pomodoro(self, task_id, minutes=25):
+        """Start a focus timer for a task; on completion, record one pomodoro."""
+        seconds = minutes * 60
+
+        def tick(remaining):
+            if remaining <= 0:
+                self.task_manager.add_pomodoro(task_id)
+                task = self.task_manager.get_task(task_id)
+                count = getattr(task, 'pomodoros', 0) if task else 0
+                self._set_status(f"🍅 番茄钟完成！累计 {count} 个")
+                messagebox.showinfo("番茄钟", "专注时间结束，休息一下吧！")
+                return
+            mins, secs = divmod(remaining, 60)
+            self._set_status(f"🍅 专注中 {mins:02d}:{secs:02d}")
+            self._pomodoro_job = self.root.after(1000, lambda: tick(remaining - 1))
+
+        tick(seconds)
 
     def show_knowledge_graph(self):
         self.knowledge_graph.build_graph(self.note_manager.notes)
