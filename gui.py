@@ -794,7 +794,8 @@ class SmartNotesApp:
 
     def start_auto_save(self):
         if config.auto_save and self.current_note and self.is_modified:
-            self.save_current_note()
+            if self._persist_current_note():
+                self._set_status(f"已自动保存 {datetime.now().strftime('%H:%M')}")
 
         self.auto_save_job = self.root.after(config.auto_save_interval * 1000,
                                             self.start_auto_save)
