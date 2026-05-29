@@ -104,7 +104,11 @@ class SearchEngine:
 
             self.inverted_index[term][note_id] = freq
 
-        self.total_docs += 1
+        # Only count a genuinely new document; re-adding an existing note
+        # (e.g. the save path's remove+add, or a repeated add) is a no-op.
+        if note_id not in self.doc_ids:
+            self.doc_ids.add(note_id)
+            self.total_docs += 1
         self.save_index()
 
     def remove_document(self, note_id: str):
@@ -117,7 +121,9 @@ class SearchEngine:
                     del self.inverted_index[term]
                     del self.document_freq[term]
 
-        self.total_docs = max(0, self.total_docs - 1)
+        if note_id in self.doc_ids:
+            self.doc_ids.discard(note_id)
+            self.total_docs = max(0, self.total_docs - 1)
         self.save_index()
 
     def calculate_tf_idf(self, term: str, note_id: str) -> float:
