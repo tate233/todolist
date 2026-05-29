@@ -48,3 +48,32 @@ def apply_line_prefix(text: str, start: int, kind: str) -> Tuple[str, int]:
 def insert_snippet(text: str, pos: int, snippet: str) -> Tuple[str, int]:
     new = text[:pos] + snippet + text[pos:]
     return new, pos + len(snippet)
+
+
+def find_all_matches(text: str, needle: str, case_sensitive: bool = False):
+    """Return a list of (start, end) offsets of every occurrence of `needle`."""
+    if not needle:
+        return []
+    hay = text if case_sensitive else text.lower()
+    pin = needle if case_sensitive else needle.lower()
+    matches = []
+    i = hay.find(pin)
+    while i != -1:
+        matches.append((i, i + len(pin)))
+        i = hay.find(pin, i + len(pin))
+    return matches
+
+
+def replace_all(text: str, needle: str, replacement: str, case_sensitive: bool = False):
+    """Replace every occurrence; returns (new_text, count)."""
+    matches = find_all_matches(text, needle, case_sensitive)
+    if not matches:
+        return text, 0
+    out = []
+    prev = 0
+    for start, end in matches:
+        out.append(text[prev:start])
+        out.append(replacement)
+        prev = end
+    out.append(text[prev:])
+    return "".join(out), len(matches)
