@@ -1,4 +1,3 @@
-import json
 import logging
 import re
 import uuid
@@ -7,7 +6,6 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from markdown_parser import count_words
-from storage.atomic_io import atomic_write_json, atomic_write_text
 
 logger = logging.getLogger(__name__)
 
@@ -85,9 +83,15 @@ class Note:
             self.updated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 class NoteManager:
-    def __init__(self, storage_path: Path, notes_dir: Path):
+    def __init__(self, storage_path: Path, notes_dir: Path, repository=None):
         self.storage_path = storage_path
         self.notes_dir = notes_dir
+        # Persistence is delegated to a NoteRepository; default keeps the
+        # existing JSON-file + per-note .md behaviour.
+        if repository is None:
+            from storage.json_repository import JsonFileRepository  # noqa: PLC0415
+            repository = JsonFileRepository(storage_path, notes_dir, Note)
+        self.repository = repository
         self.notes: Dict[str, Note] = {}
         self.load_notes()
         self.sync_note_files()
@@ -112,28 +116,10 @@ class NoteManager:
             logger.exception("清理孤立 .md 文件失败")
 
     def load_notes(self):
-        if self.storage_path.exists():
-            try:
-                with open(self.storage_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    self.notes = {
-                        note_id: Note.from_dict(note_data)
-                        for note_id, note_data in data.items()
-                    }
-            except Exception as e:
-                logger.exception("加载笔记失败: %s", e)
-                self.notes = {}
-        else:
-            self.notes = {}
+        self.notes = self.repository.load_all()
 
     def save_notes(self):
-        try:
-            data = {note_id: note.to_dict() for note_id, note in self.notes.items()}
-            atomic_write_json(self.storage_path, data)
-            return True
-        except Exception as e:
-            logger.exception("保存笔记失败: %s", e)
-            return False
+        return self.repository.save_all(self.notes)
 
     def create_note(self, title: str, content: str = "", category: str = "未分类",
                    tags: List[str] = None) -> Note:
@@ -316,22 +302,10 @@ class NoteManager:
             return None
 
     def _save_note_file(self, note: Note):
-        try:
-            filename = f"{note.id}.md"
-            filepath = self.notes_dir / filename
-
-            atomic_write_text(filepath, note.content)
-        except Exception as e:
-            logger.exception("保存笔记文件失败: %s", e)
+        self.repository.upsert(note)
 
     def _delete_note_file(self, note: Note):
-        try:
-            filename = f"{note.id}.md"
-            filepath = self.notes_dir / filename
-            if filepath.exists():
-                filepath.unlink()
-        except Exception as e:
-            logger.exception("删除笔记文件失败: %s", e)
+        self.repository.delete(note.id)
 
     def _remove_links_to_note(self, note_id: str):
         for note in self.notes.values():
