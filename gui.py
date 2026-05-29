@@ -1188,16 +1188,36 @@ class SmartNotesApp:
 
     def show_knowledge_graph(self):
         self.knowledge_graph.build_graph(self.note_manager.notes)
+        import graph_view  # noqa: PLC0415
+        if graph_view.is_available():
+            try:
+                self._show_graph_window(graph_view)
+                return
+            except Exception:
+                logger.exception("图谱可视化失败，回退到文本摘要")
+        # textual fallback (no matplotlib)
         stats = self.knowledge_graph.get_statistics()
-
         msg = "🕸️ 知识图谱\n\n"
         msg += f"笔记节点: {stats['total_nodes']}\n"
         msg += f"连接数: {stats['total_edges']}\n"
         msg += f"孤立笔记: {stats['isolated_nodes']}\n"
         msg += f"社区数: {stats['communities']}\n"
         msg += f"平均连接: {stats['avg_connections']:.2f}\n"
-
         messagebox.showinfo("知识图谱", msg)
+
+    def _show_graph_window(self, graph_view):
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg  # noqa: PLC0415
+        win = tk.Toplevel(self.root)
+        win.title("知识图谱")
+        win.geometry("760x560")
+
+        def open_node(note_id):
+            self.load_note(note_id)
+
+        fig = graph_view.build_figure(self.knowledge_graph, on_pick=open_node)
+        canvas = FigureCanvasTkAgg(fig, master=win)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill='both', expand=True)
 
     def rebuild_search_index(self):
         self.search_engine.build_index(self.note_manager.notes)
