@@ -158,6 +158,7 @@ class SmartNotesApp:
         view_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="视图", menu=view_menu)
         view_menu.add_command(label="预览模式", command=self.toggle_preview)
+        view_menu.add_command(label="编辑/分栏/预览切换", command=self.cycle_view_mode)
         view_menu.add_command(label="历史版本", command=self.show_history)
         view_menu.add_command(label="全屏", accelerator="F11")
 
@@ -639,6 +640,29 @@ class SmartNotesApp:
             pt.insert(tk.END, '\n')
         pt.config(state='disabled')
 
+    def cycle_view_mode(self):
+        import view_modes  # noqa: PLC0415
+        self._view_mode = view_modes.next_mode(getattr(self, '_view_mode', view_modes.EDIT))
+        self._apply_view_mode()
+
+    def _apply_view_mode(self):
+        import view_modes  # noqa: PLC0415
+        mode = getattr(self, '_view_mode', view_modes.EDIT)
+        editor_vis, preview_vis = view_modes.visibility(mode)
+        # reset layout
+        self.editor_text.pack_forget()
+        self.preview_text.pack_forget()
+        if editor_vis and preview_vis:
+            self.editor_text.pack(side='left', fill='both', expand=True)
+            self.preview_text.pack(side='right', fill='both', expand=True)
+            self._render_markdown_preview(self.editor_text.get('1.0', tk.END))
+        elif preview_vis:
+            self.preview_text.pack(fill='both', expand=True)
+            self._render_markdown_preview(self.editor_text.get('1.0', tk.END))
+        else:
+            self.editor_text.pack(fill='both', expand=True)
+        self._set_status(f"视图: {mode}")
+
     @staticmethod
     def _html_preview_widget(parent):
         """Return an HTMLScrolledText if tkhtmlview is installed, else None."""
@@ -758,6 +782,12 @@ class SmartNotesApp:
         self.mark_modified()
         self.update_word_count()
         self._schedule_highlight()
+        # live-refresh the preview when in split mode (debounced)
+        if getattr(self, '_view_mode', 'edit') == 'split' and self.preview_text.winfo_ismapped():
+            if getattr(self, '_split_job', None):
+                self.root.after_cancel(self._split_job)
+            self._split_job = self.root.after(
+                300, lambda: self._render_markdown_preview(self.editor_text.get('1.0', tk.END)))
 
     def mark_modified(self):
         self.is_modified = True
