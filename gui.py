@@ -46,6 +46,8 @@ class SmartNotesApp:
         self.history = VersionHistory(config.history_file)
         from attachments import AttachmentManager  # noqa: PLC0415
         self.attachments = AttachmentManager(config.attachments_dir, config.attachments_index)
+        from task_model import TaskManager  # noqa: PLC0415
+        self.task_manager = TaskManager(config.tasks_db)
 
         self.current_note = None
         self.auto_save_job = None
@@ -172,6 +174,10 @@ class SmartNotesApp:
         tools_menu.add_command(label="回收站", command=self.show_trash)
         tools_menu.add_separator()
         tools_menu.add_command(label="设置", command=self.show_settings)
+
+        todo_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="待办", menu=todo_menu)
+        todo_menu.add_command(label="待办列表", command=self.show_todo_view)
 
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="帮助", menu=help_menu)
@@ -643,6 +649,101 @@ class SmartNotesApp:
                 pt.insert(tk.END, seg_text, tags)
             pt.insert(tk.END, '\n')
         pt.config(state='disabled')
+
+    def show_todo_view(self):  # noqa: PLR0915 - cohesive view builder
+        from task_model import STATUS_DONE, STATUS_TODO  # noqa: PLC0415
+        win = tk.Toplevel(self.root)
+        win.title("待办列表")
+        win.geometry("680x460")
+
+        cols = ("title", "priority", "status", "due")
+        tree = ttk.Treeview(win, columns=cols, show="headings")
+        for c, txt in zip(cols, ("标题", "优先级", "状态", "截止")):
+            tree.heading(c, text=txt)
+        tree.pack(fill='both', expand=True, padx=8, pady=8)
+
+        def refresh():
+            tree.delete(*tree.get_children())
+            for t in self.task_manager.get_all_tasks():
+                tree.insert("", tk.END, iid=t.id,
+                            values=(t.title, t.priority, t.status, t.due_date or ""))
+
+        def add_task():
+            self._task_dialog(win, on_done=refresh)
+
+        def edit_task():
+            sel = tree.selection()
+            if sel:
+                self._task_dialog(win, task_id=sel[0], on_done=refresh)
+
+        def toggle_done():
+            sel = tree.selection()
+            if sel:
+                task = self.task_manager.get_task(sel[0])
+                new = STATUS_TODO if task.status == STATUS_DONE else STATUS_DONE
+                self.task_manager.update_task(sel[0], status=new)
+                refresh()
+
+        def delete_task():
+            sel = tree.selection()
+            if sel and messagebox.askyesno("删除", "删除该任务？", parent=win):
+                self.task_manager.delete_task(sel[0])
+                refresh()
+
+        bar = tk.Frame(win)
+        bar.pack(fill='x', pady=(0, 8))
+        tk.Button(bar, text="新建", command=add_task).pack(side='left', padx=6)
+        tk.Button(bar, text="编辑", command=edit_task).pack(side='left', padx=6)
+        tk.Button(bar, text="完成/取消", command=toggle_done).pack(side='left', padx=6)
+        tk.Button(bar, text="删除", command=delete_task).pack(side='left', padx=6)
+        refresh()
+
+    def _task_dialog(self, parent, task_id=None, on_done=None):
+        from task_model import PRIORITIES, STATUSES  # noqa: PLC0415
+        task = self.task_manager.get_task(task_id) if task_id else None
+        d = tk.Toplevel(parent)
+        d.title("编辑任务" if task else "新建任务")
+        d.transient(parent)
+
+        tk.Label(d, text="标题:").grid(row=0, column=0, sticky='e', padx=6, pady=6)
+        title_e = tk.Entry(d, width=30)
+        title_e.grid(row=0, column=1, padx=6, pady=6)
+        if task:
+            title_e.insert(0, task.title)
+
+        tk.Label(d, text="优先级:").grid(row=1, column=0, sticky='e', padx=6, pady=6)
+        prio = ttk.Combobox(d, values=list(PRIORITIES), state='readonly')
+        prio.set(task.priority if task else "medium")
+        prio.grid(row=1, column=1, padx=6, pady=6, sticky='w')
+
+        tk.Label(d, text="状态:").grid(row=2, column=0, sticky='e', padx=6, pady=6)
+        status = ttk.Combobox(d, values=list(STATUSES), state='readonly')
+        status.set(task.status if task else "todo")
+        status.grid(row=2, column=1, padx=6, pady=6, sticky='w')
+
+        tk.Label(d, text="截止(YYYY-MM-DD):").grid(row=3, column=0, sticky='e', padx=6, pady=6)
+        due_e = tk.Entry(d, width=30)
+        due_e.grid(row=3, column=1, padx=6, pady=6)
+        if task and task.due_date:
+            due_e.insert(0, task.due_date)
+
+        def save():
+            title = title_e.get().strip()
+            if not title:
+                messagebox.showwarning("提示", "标题不能为空", parent=d)
+                return
+            fields = dict(priority=prio.get(), status=status.get(),
+                          due_date=due_e.get().strip() or None)
+            if task:
+                self.task_manager.update_task(task.id, title=title, **fields)
+            else:
+                self.task_manager.create_task(title, **fields)
+            d.destroy()
+            if on_done:
+                on_done()
+
+        tk.Button(d, text="保存", command=save).grid(row=4, column=0, columnspan=2, pady=10)
+        title_e.focus()
 
     def show_note_tasks(self):
         if not self.current_note:
