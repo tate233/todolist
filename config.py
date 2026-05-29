@@ -69,6 +69,9 @@ class Config:
         # UI theme name (see theme.py): "light" | "dark".
         self.theme = "light"
 
+        # UI language (see locales/): "zh_CN" | "en_US".
+        self.language = "zh_CN"
+
         self.window_width = 1200
         self.window_height = 800
         self.theme_color = "#2c3e50"
@@ -123,7 +126,8 @@ class Config:
                 'enable_markdown_preview': self.enable_markdown_preview,
                 'enable_syntax_highlight': self.enable_syntax_highlight,
                 'storage_backend': self.storage_backend,
-                'theme': self.theme
+                'theme': self.theme,
+                'language': self.language
             }
             atomic_write_json(self.config_file, config_data)
             return True
