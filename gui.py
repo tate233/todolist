@@ -1043,7 +1043,8 @@ class SmartNotesApp:
             pass  # nothing to redo
         return "break"
 
-    def show_replace(self, event=None):
+    def show_replace(self, event=None):  # noqa: PLR0915 - cohesive dialog builder
+        import md_actions  # noqa: PLC0415
         dialog = tk.Toplevel(self.root)
         dialog.title("查找和替换")
         dialog.transient(self.root)
@@ -1052,27 +1053,60 @@ class SmartNotesApp:
         find_lbl = tk.Label(dialog, text="查找:", bg=self.colors['bg_card'])
         find_lbl.grid(row=0, column=0, padx=8, pady=8, sticky='e')
         find_entry = tk.Entry(dialog, width=28)
-        find_entry.grid(row=0, column=1, padx=8, pady=8)
+        find_entry.grid(row=0, column=1, columnspan=3, padx=8, pady=8, sticky='w')
         repl_lbl = tk.Label(dialog, text="替换为:", bg=self.colors['bg_card'])
         repl_lbl.grid(row=1, column=0, padx=8, pady=8, sticky='e')
         repl_entry = tk.Entry(dialog, width=28)
-        repl_entry.grid(row=1, column=1, padx=8, pady=8)
+        repl_entry.grid(row=1, column=1, columnspan=3, padx=8, pady=8, sticky='w')
+
+        case_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(dialog, text="区分大小写", variable=case_var,
+                       bg=self.colors['bg_card']).grid(row=2, column=0, columnspan=2, sticky='w', padx=8)
+
+        self.editor_text.tag_configure('find_hit', background='#ffe066')
+        state = {'matches': [], 'idx': -1}
+
+        def do_find():
+            self.editor_text.tag_remove('find_hit', '1.0', tk.END)
+            text = self.editor_text.get('1.0', tk.END)[:-1]
+            state['matches'] = md_actions.find_all_matches(text, find_entry.get(), case_var.get())
+            for start, end in state['matches']:
+                self.editor_text.tag_add('find_hit', f'1.0 + {start} chars', f'1.0 + {end} chars')
+            state['idx'] = -1
+            count_lbl.config(text=f"{len(state['matches'])} 处匹配")
+            if state['matches']:
+                goto(0)
+
+        def goto(i):
+            if not state['matches']:
+                return
+            state['idx'] = i % len(state['matches'])
+            start, _end = state['matches'][state['idx']]
+            self.editor_text.see(f'1.0 + {start} chars')
+            self.editor_text.mark_set(tk.INSERT, f'1.0 + {start} chars')
 
         def replace_all():
-            find = find_entry.get()
-            if not find:
-                return
-            repl = repl_entry.get()
-            content = self.editor_text.get(1.0, tk.END)
-            new_content, n = content.replace(find, repl), content.count(find)
+            text = self.editor_text.get('1.0', tk.END)[:-1]
+            new, n = md_actions.replace_all(text, find_entry.get(), repl_entry.get(), case_var.get())
             if n:
-                self.editor_text.delete(1.0, tk.END)
-                self.editor_text.insert(1.0, new_content.rstrip('\n'))
+                self.editor_text.delete('1.0', tk.END)
+                self.editor_text.insert('1.0', new)
                 self.mark_modified()
                 self.update_word_count()
+                self.highlight_editor()
             messagebox.showinfo("替换", f"已替换 {n} 处", parent=dialog)
 
-        tk.Button(dialog, text="全部替换", command=replace_all).grid(row=2, column=0, columnspan=2, pady=10)
+        tk.Button(dialog, text="查找", command=do_find).grid(row=3, column=0, pady=8)
+        tk.Button(dialog, text="上一个", command=lambda: goto(state['idx'] - 1)).grid(row=3, column=1, pady=8)
+        tk.Button(dialog, text="下一个", command=lambda: goto(state['idx'] + 1)).grid(row=3, column=2, pady=8)
+        tk.Button(dialog, text="全部替换", command=replace_all).grid(row=3, column=3, pady=8)
+        count_lbl = tk.Label(dialog, text="", bg=self.colors['bg_card'])
+        count_lbl.grid(row=4, column=0, columnspan=4)
+
+        def on_close():
+            self.editor_text.tag_remove('find_hit', '1.0', tk.END)
+            dialog.destroy()
+        dialog.protocol("WM_DELETE_WINDOW", on_close)
         find_entry.focus()
 
     def show_help(self):
