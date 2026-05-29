@@ -1,10 +1,9 @@
-import logging
 import json
+import logging
 import re
 from pathlib import Path
 
 from storage.atomic_io import atomic_write_json
-
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +15,7 @@ def _detect_version() -> str:
     avoids the version drifting between config.py and pyproject.toml.
     """
     try:
-        from importlib.metadata import PackageNotFoundError, version
+        from importlib.metadata import PackageNotFoundError, version  # noqa: PLC0415
         try:
             return version("todolist")
         except PackageNotFoundError:
@@ -27,7 +26,7 @@ def _detect_version() -> str:
     pyproject = Path(__file__).resolve().parent / "pyproject.toml"
     if pyproject.exists():
         try:
-            import tomllib
+            import tomllib  # noqa: PLC0415
             with open(pyproject, "rb") as f:
                 return tomllib.load(f)["project"]["version"]
         except Exception:

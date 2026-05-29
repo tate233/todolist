@@ -1,5 +1,5 @@
-import logging
 import json
+import logging
 import math
 import re
 from collections import defaultdict
@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from storage.atomic_io import atomic_write_json
-
 
 logger = logging.getLogger(__name__)
 
@@ -358,9 +357,7 @@ class KnowledgeGraph:
                     continue
                 visited.add(node)
                 community.append(node)
-                for neighbor in adjacency.get(node, ()):
-                    if neighbor not in visited:
-                        stack.append(neighbor)
+                stack.extend(n for n in adjacency.get(node, ()) if n not in visited)
             if len(community) > 1:
                 communities.append(community)
 
