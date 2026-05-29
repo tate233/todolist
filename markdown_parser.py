@@ -219,6 +219,13 @@ class MarkdownParser:
         minutes = max(1, round(word_count / words_per_minute))
         return minutes
 
+    def format_stats_line(self, text: str) -> str:
+        """Compact one-line stats for the status bar: words / chars / read time."""
+        words = self.get_word_count(text)
+        chars = len(text)
+        minutes = self.get_reading_time(text)
+        return f"📝 {words} 词 · {chars} 字符 · ⏱ {minutes} 分钟"
+
     def highlight_code(self, code: str, language: str = 'python') -> str:
         try:
             lexer = get_lexer_by_name(language, stripall=True)
