@@ -1,4 +1,5 @@
 import tkinter as tk
+from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 
@@ -384,6 +385,14 @@ class SmartNotesApp:
                                         fg=self.colors['text_light'])
         self.word_count_label.pack(side='right', padx=15)
 
+        status_bar = tk.Frame(self.editor_container, bg=self.colors['bg_card'])
+        status_bar.pack(fill='x', side='bottom')
+        self.status_label = tk.Label(status_bar, text="", anchor='w',
+                                     font=config.ui_font,
+                                     bg=self.colors['bg_card'],
+                                     fg=self.colors['text_light'])
+        self.status_label.pack(side='left', padx=15, pady=2)
+
         editor_frame = tk.Frame(self.editor_container, bg=self.colors['bg_main'])
         editor_frame.pack(fill='both', expand=True, padx=20, pady=(5, 15))
 
@@ -481,14 +490,14 @@ class SmartNotesApp:
         self.title_entry.focus()
         self.title_entry.select_range(0, tk.END)
 
-    def save_current_note(self):
+    def _persist_current_note(self):
+        """Persist the current note without any UI prompt. Returns True on save."""
         if not self.current_note:
-            return
+            return False
 
         title = self.title_entry.get().strip()
         if not title:
-            messagebox.showwarning("警告", "笔记标题不能为空")
-            return
+            return False
 
         content = self.editor_text.get(1.0, tk.END).strip()
         category = self.note_category_var.get()
@@ -510,7 +519,21 @@ class SmartNotesApp:
 
         self.is_modified = False
         self.load_notes_list()
-        messagebox.showinfo("成功", "笔记已保存")
+        return True
+
+    def _set_status(self, text):
+        if hasattr(self, 'status_label'):
+            self.status_label.config(text=text)
+
+    def save_current_note(self):
+        if not self.current_note:
+            return
+        if not self.title_entry.get().strip():
+            messagebox.showwarning("警告", "笔记标题不能为空")
+            return
+        if self._persist_current_note():
+            self._set_status(f"已保存 {datetime.now().strftime('%H:%M')}")
+            messagebox.showinfo("成功", "笔记已保存")
 
     def delete_current_note(self):
         if not self.current_note:
