@@ -161,6 +161,7 @@ class SmartNotesApp:
         tools_menu.add_command(label="知识图谱", command=self.show_knowledge_graph)
         tools_menu.add_command(label="重建索引", command=self.rebuild_search_index)
         tools_menu.add_command(label="数据体检", command=self.run_integrity_check)
+        tools_menu.add_command(label="回收站", command=self.show_trash)
         tools_menu.add_separator()
         tools_menu.add_command(label="设置", command=self.show_settings)
 
@@ -858,6 +859,43 @@ class SmartNotesApp:
             self._set_status("设置已保存")
 
         tk.Button(dialog, text="保存", command=apply_settings).grid(row=5, column=0, columnspan=2, pady=12)
+
+    def show_trash(self):
+        trash = self.note_manager.get_trash()
+        win = tk.Toplevel(self.root)
+        win.title("回收站")
+        win.geometry("420x360")
+
+        listbox = tk.Listbox(win)
+        for n in trash:
+            listbox.insert(tk.END, f"{n.title}  (删除于 {n.deleted_at})")
+        listbox.pack(fill='both', expand=True, padx=8, pady=8)
+        ids = [n.id for n in trash]
+
+        def restore():
+            sel = listbox.curselection()
+            if not sel:
+                return
+            note_id = ids[sel[0]]
+            self.note_manager.restore_note(note_id)
+            note = self.note_manager.get_note(note_id)
+            if note:
+                self.search_engine.add_document(note_id, note)
+            self.load_notes_list()
+            win.destroy()
+
+        def purge():
+            sel = listbox.curselection()
+            if not sel:
+                return
+            if messagebox.askyesno("彻底删除", "彻底删除后不可恢复，确定？", parent=win):
+                self.note_manager.purge_note(ids[sel[0]])
+                win.destroy()
+
+        btns = tk.Frame(win)
+        btns.pack(fill='x', pady=(0, 8))
+        tk.Button(btns, text="恢复", command=restore).pack(side='left', padx=8)
+        tk.Button(btns, text="彻底删除", command=purge).pack(side='left')
 
     def run_integrity_check(self):
         import integrity  # noqa: PLC0415

@@ -24,17 +24,17 @@ def test_crud_and_reload(tmp_path):
     assert nm.get_note(n.id).content == "y"
     nm2 = NoteManager(tmp_path / "n.db", tmp_path)
     assert nm2.get_note(n.id).content == "y"
-    nm2.delete_note(n.id)
+    nm2.purge_note(n.id)  # permanent removal
     assert NoteManager(tmp_path / "n.db", tmp_path).get_note(n.id) is None
 
 
-def test_links_cleaned_on_delete(tmp_path):
+def test_links_cleaned_on_purge(tmp_path):
     nm = NoteManager(tmp_path / "n.db", tmp_path)
     a = nm.create_note("A", "x")
     b = nm.create_note("B", "y")
     a.add_link(b.id)
     nm.save_notes()
-    nm.delete_note(b.id)
+    nm.purge_note(b.id)  # permanent removal cleans inbound links
     assert b.id not in nm.get_note(a.id).links
 
 
