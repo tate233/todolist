@@ -9,6 +9,18 @@ from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.util import ClassNotFound
 
 
+def count_words(text: str) -> int:
+    """Count words in Markdown text, ignoring code spans/blocks and markup.
+
+    Single source of truth for word counting so the note model, the editor
+    word-count label and the statistics panel all report the same number.
+    """
+    text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)
+    text = re.sub(r'`[^`]+`', '', text)
+    text = re.sub(r'[#\*\-\[\]\(\)_]', '', text)
+    return len(text.split())
+
+
 class MarkdownParser:
     def __init__(self):
         self.md = markdown.Markdown(extensions=[
@@ -78,11 +90,7 @@ class MarkdownParser:
         return tasks
 
     def get_word_count(self, text: str) -> int:
-        text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)
-        text = re.sub(r'`[^`]+`', '', text)
-        text = re.sub(r'[#\*\-\[\]\(\)_]', '', text)
-        words = text.split()
-        return len(words)
+        return count_words(text)
 
     def get_reading_time(self, text: str, words_per_minute: int = 200) -> int:
         word_count = self.get_word_count(text)
