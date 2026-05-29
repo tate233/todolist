@@ -102,7 +102,16 @@ class SearchEngine:
 
         self.save_index()
 
-    def add_document(self, note_id: str, note):
+    def mark_dirty(self):
+        self._dirty = True
+
+    def flush(self):
+        """Persist the index only if there are pending in-memory changes."""
+        if getattr(self, "_dirty", False):
+            self.save_index()
+            self._dirty = False
+
+    def add_document(self, note_id: str, note, flush: bool = True):
         text = f"{note.title} {note.content} {' '.join(note.tags)}"
         tokens = self.tokenize(text)
 
@@ -126,9 +135,12 @@ class SearchEngine:
         if note_id not in self.doc_ids:
             self.doc_ids.add(note_id)
             self.total_docs += 1
-        self.save_index()
+        if flush:
+            self.save_index()
+        else:
+            self.mark_dirty()
 
-    def remove_document(self, note_id: str):
+    def remove_document(self, note_id: str, flush: bool = True):
         for term in list(self.inverted_index.keys()):
             if note_id in self.inverted_index[term]:
                 del self.inverted_index[term][note_id]
@@ -142,7 +154,18 @@ class SearchEngine:
             self.doc_ids.discard(note_id)
             self.total_docs = max(0, self.total_docs - 1)
         self.doc_len.pop(note_id, None)
-        self.save_index()
+        if flush:
+            self.save_index()
+        else:
+            self.mark_dirty()
+
+    def update_document(self, note_id: str, note, flush: bool = False):
+        """Incrementally re-index a single note (remove old postings, add new)
+        without rebuilding the whole index. Deferred flush by default."""
+        self.remove_document(note_id, flush=False)
+        self.add_document(note_id, note, flush=False)
+        if flush:
+            self.flush()
 
     def calculate_tf_idf(self, term: str, note_id: str) -> float:
         if term not in self.inverted_index:
